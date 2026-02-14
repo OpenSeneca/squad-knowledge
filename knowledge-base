@@ -1,0 +1,347 @@
+#!/usr/bin/env python3
+"""
+Knowledge Base CLI Tool for Squad Operations
+Centralized knowledge management across all agents
+"""
+
+import argparse
+import json
+import os
+import sys
+import datetime
+import uuid
+import shutil
+from pathlib import Path
+from typing import Dict, List, Optional, Any
+
+class KnowledgeBase:
+    def __init__(self, base_path: str = "/home/lobster/.openclaw/workspace/shared-knowledge"):
+        self.base_path = Path(base_path)
+        self.metadata_dir = self.base_path / ".metadata"
+        self.knowledge_types = ["research", "tech", "ops", "decision"]
+        self.setup_directory_structure()
+    
+    def setup_directory_structure(self):
+        """Create the knowledge base directory structure"""
+        # Create main directories
+        self.base_path.mkdir(parents=True, exist_ok=True)
+        self.metadata_dir.mkdir(exist_ok=True)
+        
+        # Create type-specific directories
+        for knowledge_type in self.knowledge_types:
+            (self.base_path / knowledge_type).mkdir(exist_ok=True)
+        
+        # Create version history directory
+        (self.base_path / ".versions").mkdir(exist_ok=True)
+        
+        # Create index file
+        index_file = self.base_path / "index.json"
+        if not index_file.exists():
+            self.create_index_file()
+    
+    def create_index_file(self):
+        """Create the main index file"""
+        index = {
+            "created": datetime.datetime.now().isoformat(),
+            "last_updated": datetime.datetime.now().isoformat(),
+            "total_entries": 0,
+            "agents": [],
+            "knowledge_types": self.knowledge_types
+        }
+        
+        with open(self.base_path / "index.json", 'w') as f:
+            json.dump(index, f, indent=2)
+    
+    def update_index(self, entry_id: str, action: str = "add"):
+        """Update the main index file"""
+        index_file = self.base_path / "index.json"
+        with open(index_file, 'r') as f:
+            index = json.load(f)
+        
+        index["last_updated"] = datetime.datetime.now().isoformat()
+        
+        if action == "add":
+            index["total_entries"] += 1
+        elif action == "delete":
+            index["total_entries"] -= 1
+        
+        with open(index_file, 'w') as f:
+            json.dump(index, f, indent=2)
+    
+    def add_knowledge(self, topic: str, content: str, knowledge_type: str, agent: str, tags: List[str] = None) -> str:
+        """Add new knowledge entry"""
+        if knowledge_type not in self.knowledge_types:
+            raise ValueError(f"Invalid knowledge type. Must be one of: {self.knowledge_types}")
+        
+        entry_id = str(uuid.uuid4())
+        timestamp = datetime.datetime.now().isoformat()
+        
+        # Create metadata
+        metadata = {
+            "id": entry_id,
+            "topic": topic,
+            "type": knowledge_type,
+            "agent": agent,
+            "timestamp": timestamp,
+            "tags": tags or [],
+            "content_length": len(content),
+            "version": 1
+        }
+        
+        # Save metadata
+        metadata_file = self.metadata_dir / f"{entry_id}.json"
+        with open(metadata_file, 'w') as f:
+            json.dump(metadata, f, indent=2)
+        
+        # Save content
+        content_file = self.base_path / knowledge_type / f"{entry_id}.md"
+        with open(content_file, 'w') as f:
+            f.write(f"# {topic}\n\n")
+            f.write(f"**Agent:** {agent}\n")
+            f.write(f"**Type:** {knowledge_type}\n")
+            f.write(f"**Date:** {timestamp}\n")
+            f.write(f"**Tags:** {', '.join(tags or [])}\n\n")
+            f.write("---\n\n")
+            f.write(content)
+        
+        # Update index
+        self.update_index(entry_id, "add")
+        
+        return entry_id
+    
+    def get_knowledge(self, entry_id: str) -> Dict[str, Any]:
+        """Get knowledge entry by ID"""
+        metadata_file = self.metadata_dir / f"{entry_id}.json"
+        
+        if not metadata_file.exists():
+            return None
+        
+        with open(metadata_file, 'r') as f:
+            metadata = json.load(f)
+        
+        content_file = self.base_path / metadata["type"] / f"{entry_id}.md"
+        
+        if not content_file.exists():
+            return None
+        
+        with open(content_file, 'r') as f:
+            content = f.read()
+        
+        return {
+            "metadata": metadata,
+            "content": content
+        }
+    
+    def search_knowledge(self, query: str, knowledge_type: str = "all", limit: int = 10) -> List[Dict[str, Any]]:
+        """Search knowledge entries"""
+        results = []
+        
+        # Search in metadata files
+        for metadata_file in self.metadata_dir.glob("*.json"):
+            with open(metadata_file, 'r') as f:
+                metadata = json.load(f)
+            
+            # Filter by type
+            if knowledge_type != "all" and metadata["type"] != knowledge_type:
+                continue
+            
+            # Simple text search in topic and tags
+            search_text = f"{metadata['topic']} {' '.join(metadata['tags'])}".lower()
+            if query.lower() in search_text:
+                content_file = self.base_path / metadata["type"] / f"{metadata['id']}.md"
+                
+                if content_file.exists():
+                    with open(content_file, 'r') as f:
+                        content = f.read()
+                    
+                    # Get first 200 chars as preview
+                    content_preview = content[:200].replace('\n', ' ').strip()
+                    if len(content) > 200:
+                        content_preview += "..."
+                    
+                    results.append({
+                        "id": metadata["id"],
+                        "topic": metadata["topic"],
+                        "type": metadata["type"],
+                        "agent": metadata["agent"],
+                        "timestamp": metadata["timestamp"],
+                        "tags": metadata["tags"],
+                        "preview": content_preview
+                    })
+        
+        # Sort by timestamp (newest first) and limit
+        results.sort(key=lambda x: x["timestamp"], reverse=True)
+        return results[:limit]
+    
+    def list_knowledge(self, agent: str = "all", knowledge_type: str = "all", last_days: int = None) -> List[Dict[str, Any]]:
+        """List knowledge entries with filters"""
+        results = []
+        
+        cutoff_time = None
+        if last_days:
+            cutoff_time = (datetime.datetime.now() - datetime.timedelta(days=last_days)).isoformat()
+        
+        for metadata_file in self.metadata_dir.glob("*.json"):
+            with open(metadata_file, 'r') as f:
+                metadata = json.load(f)
+            
+            # Apply filters
+            if agent != "all" and metadata["agent"] != agent:
+                continue
+            
+            if knowledge_type != "all" and metadata["type"] != knowledge_type:
+                continue
+            
+            if cutoff_time and metadata["timestamp"] < cutoff_time:
+                continue
+            
+            results.append(metadata)
+        
+        # Sort by timestamp (newest first)
+        results.sort(key=lambda x: x["timestamp"], reverse=True)
+        return results
+    
+    def sync_push(self, local_path: str = None):
+        """Push local knowledge to shared repository"""
+        if local_path:
+            local_kb = Path(local_path)
+            if not local_kb.exists():
+                print(f"Error: Local path {local_path} does not exist")
+                return
+            
+            # Copy all files from local to shared
+            for item in local_kb.glob("*"):
+                if item.is_file():
+                    shutil.copy2(item, self.base_path / item.name)
+                elif item.is_dir() and item.name != ".git":
+                    target_dir = self.base_path / item.name
+                    shutil.copytree(item, target_dir, dirs_exist_ok=True)
+        
+        print("Knowledge pushed to shared repository")
+    
+    def sync_pull(self, local_path: str = None):
+        """Pull knowledge from shared repository"""
+        if local_path:
+            local_kb = Path(local_path)
+            local_kb.mkdir(parents=True, exist_ok=True)
+            
+            # Copy all files from shared to local
+            for item in self.base_path.glob("*"):
+                if item.is_file():
+                    shutil.copy2(item, local_kb / item.name)
+                elif item.is_dir() and item.name != ".git":
+                    target_dir = local_kb / item.name
+                    shutil.copytree(item, target_dir, dirs_exist_ok=True)
+        
+        print("Knowledge pulled from shared repository")
+
+def main():
+    parser = argparse.ArgumentParser(description="Knowledge Base CLI Tool for Squad Operations")
+    parser.add_argument("--base-path", default="/home/lobster/.openclaw/workspace/shared-knowledge", 
+                       help="Base path for knowledge base")
+    
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+    
+    # Add command
+    add_parser = subparsers.add_parser("add", help="Add new knowledge entry")
+    add_parser.add_argument("topic", help="Topic or title of the knowledge")
+    add_parser.add_argument("--content", required=True, help="Content of the knowledge")
+    add_parser.add_argument("--type", required=True, choices=["research", "tech", "ops", "decision"], 
+                           help="Type of knowledge")
+    add_parser.add_argument("--agent", required=True, 
+                           choices=["seneca", "marcus", "archimedes", "argus", "galen"], 
+                           help="Agent adding the knowledge")
+    add_parser.add_argument("--tags", nargs="*", default=[], help="Tags for the knowledge")
+    
+    # Search command
+    search_parser = subparsers.add_parser("search", help="Search knowledge entries")
+    search_parser.add_argument("query", help="Search query")
+    search_parser.add_argument("--type", default="all", choices=["all", "research", "tech", "ops", "decision"], 
+                               help="Filter by knowledge type")
+    search_parser.add_argument("--limit", type=int, default=10, help="Maximum number of results")
+    
+    # Get command
+    get_parser = subparsers.add_parser("get", help="Get knowledge entry by ID")
+    get_parser.add_argument("entry_id", help="ID of the knowledge entry")
+    
+    # List command
+    list_parser = subparsers.add_parser("list", help="List knowledge entries")
+    list_parser.add_argument("--agent", default="all", 
+                             choices=["all", "seneca", "marcus", "archimedes", "argus", "galen"], 
+                             help="Filter by agent")
+    list_parser.add_argument("--type", default="all", choices=["all", "research", "tech", "ops", "decision"], 
+                            help="Filter by knowledge type")
+    list_parser.add_argument("--last", type=int, help="Show entries from last N days")
+    
+    # Sync command
+    sync_parser = subparsers.add_parser("sync", help="Synchronize knowledge")
+    sync_parser.add_argument("action", choices=["push", "pull"], help="Sync action")
+    sync_parser.add_argument("--local", help="Local path for sync")
+    
+    args = parser.parse_args()
+    
+    if not args.command:
+        parser.print_help()
+        return
+    
+    kb = KnowledgeBase(args.base_path)
+    
+    if args.command == "add":
+        try:
+            entry_id = kb.add_knowledge(args.topic, args.content, args.type, args.agent, args.tags)
+            print(f"Knowledge added successfully with ID: {entry_id}")
+        except ValueError as e:
+            print(f"Error: {e}")
+    
+    elif args.command == "search":
+        results = kb.search_knowledge(args.query, args.type, args.limit)
+        
+        if not results:
+            print("No results found")
+        else:
+            print(f"Found {len(results)} results:")
+            for result in results:
+                print(f"\nID: {result['id']}")
+                print(f"Topic: {result['topic']}")
+                print(f"Type: {result['type']}")
+                print(f"Agent: {result['agent']}")
+                print(f"Date: {result['timestamp']}")
+                print(f"Tags: {', '.join(result['tags'])}")
+                print(f"Preview: {result['preview']}")
+    
+    elif args.command == "get":
+        result = kb.get_knowledge(args.entry_id)
+        
+        if not result:
+            print("Knowledge entry not found")
+        else:
+            metadata = result["metadata"]
+            content = result["content"]
+            print(f"ID: {metadata['id']}")
+            print(f"Topic: {metadata['topic']}")
+            print(f"Type: {metadata['type']}")
+            print(f"Agent: {metadata['agent']}")
+            print(f"Date: {metadata['timestamp']}")
+            print(f"Tags: {', '.join(metadata['tags'])}")
+            print(f"Version: {metadata['version']}")
+            print("\n--- CONTENT ---")
+            print(content)
+    
+    elif args.command == "list":
+        results = kb.list_knowledge(args.agent, args.type, args.last)
+        
+        if not results:
+            print("No entries found")
+        else:
+            print(f"Found {len(results)} entries:")
+            for result in results:
+                print(f"ID: {result['id']} | Topic: {result['topic']} | Type: {result['type']} | Agent: {result['agent']} | Date: {result['timestamp']}")
+    
+    elif args.command == "sync":
+        if args.action == "push":
+            kb.sync_push(args.local)
+        elif args.action == "pull":
+            kb.sync_pull(args.local)
+
+if __name__ == "__main__":
+    main()

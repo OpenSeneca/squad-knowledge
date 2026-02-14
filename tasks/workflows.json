@@ -1,0 +1,87 @@
+{
+  "created": "2026-02-07T23:24:59.905766",
+  "workflows": {
+    "workflow-001": {
+      "id": "workflow-001",
+      "name": "deploy-new-feature",
+      "description": "Standard workflow for deploying new features to production",
+      "steps": [
+        {
+          "agent": "archimedes",
+          "task_type": "build",
+          "status": "pending",
+          "task_id": "task-0008"
+        },
+        {
+          "agent": "argus",
+          "task_type": "deploy",
+          "status": "pending",
+          "task_id": "task-0009"
+        }
+      ],
+      "status": "running",
+      "current_step": 0,
+      "created_at": "2026-02-07T23:25:00.758495",
+      "updated_at": "2026-02-07T23:25:00.980194"
+    },
+    "workflow-002": {
+      "id": "workflow-002",
+      "name": "research-and-build",
+      "description": "Research followed by implementation workflow",
+      "steps": [
+        {
+          "agent": "marcus",
+          "task_type": "research",
+          "status": "pending",
+          "task_id": "task-0010"
+        },
+        {
+          "agent": "archimedes",
+          "task_type": "implement",
+          "status": "pending",
+          "task_id": "task-0011"
+        }
+      ],
+      "status": "running",
+      "current_step": 0,
+      "created_at": "2026-02-07T23:25:00.817861",
+      "updated_at": "2026-02-07T23:25:01.035282"
+    },
+    "workflow-003": {
+      "id": "workflow-003",
+      "name": "biotech-pipeline",
+      "description": "Complete biotech research pipeline",
+      "steps": [
+        {
+          "agent": "marcus",
+          "task_type": "research",
+          "status": "pending",
+          "task_id": null
+        },
+        {
+          "agent": "galen",
+          "task_type": "analysis",
+          "status": "pending",
+          "task_id": null
+        },
+        {
+          "agent": "archimedes",
+          "task_type": "tool",
+          "status": "pending",
+          "task_id": null
+        },
+        {
+          "agent": "argus",
+          "task_type": "deploy",
+          "status": "pending",
+          "task_id": null
+        }
+      ],
+      "status": "created",
+      "current_step": 0,
+      "created_at": "2026-02-07T23:25:00.871870",
+      "updated_at": "2026-02-07T23:25:00.871882"
+    }
+  },
+  "next_workflow_id": 4
+}

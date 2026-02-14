@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Squad Operations | Overview</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        :root {
+            --bg-primary: #0f0f23;
+            --bg-secondary: #1a1b3a;
+            --accent: #3b82f6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --text-primary: #ffffff;
+            --text-secondary: #94a3b8;
+        }
+        
+        body {
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+        
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .nav-item {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .nav-item:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(59, 130, 246, 0.15);
+        }
+        
+        .status-online { 
+            background: var(--success); 
+            box-shadow: 0 0 8px var(--success);
+        }
+        
+        .status-busy { 
+            background: var(--warning); 
+            box-shadow: 0 0 8px var(--warning);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Header -->
+    <nav class="glass sticky top-0 z-50 border-b border-white/10">
+        <div class="max-w-7xl mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-8">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
+                            <i data-feather="layers" class="w-6 h-6 text-white"></i>
+                        </div>
+                        <h1 class="text-xl font-semibold">Squad Ops</h1>
+                    </div>
+                    
+                    <div class="hidden md:flex space-x-6">
+                        <a href="/" class="text-blue-400 border-b-2 border-blue-400 pb-1">Overview</a>
+                        <a href="/dashboard/" class="text-gray-400 hover:text-white transition-colors">Dashboard</a>
+                        <a href="/dashboard/highlights.html" class="text-gray-400 hover:text-white transition-colors">Highlights</a>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2">
+                        <div class="status-online w-2 h-2 rounded-full"></div>
+                        <span class="text-sm text-gray-400">4 Agents</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-6 py-8">
+        <!-- Quick Status -->
+        <section class="mb-12">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold mb-2">Squad Status</h2>
+                <p class="text-gray-400">What's happening right now</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div class="glass rounded-2xl p-6 text-center">
+                    <div class="w-16 h-16 mx-auto mb-4 bg-green-500/20 rounded-full flex items-center justify-center">
+                        <i data-feather="users" class="w-8 h-8 text-green-400"></i>
+                    </div>
+                    <div class="text-3xl font-bold mb-1">4</div>
+                    <div class="text-gray-400 text-sm">Agents Active</div>
+                </div>
+                
+                <div class="glass rounded-2xl p-6 text-center">
+                    <div class="w-16 h-16 mx-auto mb-4 bg-blue-500/20 rounded-full flex items-center justify-center">
+                        <i data-feather="activity" class="w-8 h-8 text-blue-400"></i>
+                    </div>
+                    <div class="text-3xl font-bold mb-1">87%</div>
+                    <div class="text-gray-400 text-sm">System Health</div>
+                </div>
+                
+                <div class="glass rounded-2xl p-6 text-center">
+                    <div class="w-16 h-16 mx-auto mb-4 bg-purple-500/20 rounded-full flex items-center justify-center">
+                        <i data-feather="zap" class="w-8 h-8 text-purple-400"></i>
+                    </div>
+                    <div class="text-3xl font-bold mb-1">29</div>
+                    <div class="text-gray-400 text-sm">Tasks Today</div>
+                </div>
+                
+                <div class="glass rounded-2xl p-6 text-center">
+                    <div class="w-16 h-16 mx-auto mb-4 bg-orange-500/20 rounded-full flex items-center justify-center">
+                        <i data-feather="clock" class="w-8 h-8 text-orange-400"></i>
+                    </div>
+                    <div class="text-3xl font-bold mb-1">99.9%</div>
+                    <div class="text-gray-400 text-sm">Uptime</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Navigation Grid -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-semibold mb-6">Quick Access</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="nav-item glass rounded-2xl p-8 text-center group" onclick="window.location.href='/dashboard/'">
+                    <div class="w-20 h-20 mx-auto mb-4 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <i data-feather="bar-chart-2" class="w-10 h-10 text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">Live Dashboard</h3>
+                    <p class="text-gray-400 text-sm">Real-time squad operations</p>
+                </div>
+                
+                <div class="nav-item glass rounded-2xl p-8 text-center group" onclick="window.location.href='/dashboard/highlights.html'">
+                    <div class="w-20 h-20 mx-auto mb-4 bg-gradient-to-r from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <i data-feather="star" class="w-10 h-10 text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">Highlights</h3>
+                    <p class="text-gray-400 text-sm">Key achievements & wins</p>
+                </div>
+                
+                <div class="nav-item glass rounded-2xl p-8 text-center group" onclick="window.location.href='/dashboard/marl-progress.html'">
+                    <div class="w-20 h-20 mx-auto mb-4 bg-gradient-to-r from-green-500 to-green-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <i data-feather="cpu" class="w-10 h-10 text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">MARL Project</h3>
+                    <p class="text-gray-400 text-sm">Multi-agent reinforcement learning</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Agent Status -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-semibold mb-6">Agent Status</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="glass rounded-xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <img src="https://ui-avatars.com/api/?name=Seneca&background=3b82f6&color=fff" 
+                             alt="Seneca" class="w-12 h-12 rounded-lg">
+                        <div class="status-online w-3 h-3 rounded-full"></div>
+                    </div>
+                    <h3 class="font-semibold mb-1">Seneca</h3>
+                    <p class="text-gray-400 text-sm mb-3">CEO</p>
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-400">Status</span>
+                        <span class="text-green-400">Active</span>
+                    </div>
+                </div>
+                
+                <div class="glass rounded-xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <img src="https://ui-avatars.com/api/?name=Marcus&background=8b5cf6&color=fff" 
+                             alt="Marcus" class="w-12 h-12 rounded-lg">
+                        <div class="status-online w-3 h-3 rounded-full"></div>
+                    </div>
+                    <h3 class="font-semibold mb-1">Marcus</h3>
+                    <p class="text-gray-400 text-sm mb-3">Research Lead</p>
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-400">Status</span>
+                        <span class="text-green-400">Active</span>
+                    </div>
+                </div>
+                
+                <div class="glass rounded-xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <img src="https://ui-avatars.com/api/?name=Archimedes&background=10b981&color=fff" 
+                             alt="Archimedes" class="w-12 h-12 rounded-lg">
+                        <div class="status-busy w-3 h-3 rounded-full"></div>
+                    </div>
+                    <h3 class="font-semibold mb-1">Archimedes</h3>
+                    <p class="text-gray-400 text-sm mb-3">Engineering Lead</p>
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-400">Status</span>
+                        <span class="text-yellow-400">Busy</span>
+                    </div>
+                </div>
+                
+                <div class="glass rounded-xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <img src="https://ui-avatars.com/api/?name=Argus&background=f59e0b&color=fff" 
+                             alt="Argus" class="w-12 h-12 rounded-lg">
+                        <div class="status-online w-3 h-3 rounded-full"></div>
+                    </div>
+                    <h3 class="font-semibold mb-1">Argus</h3>
+                    <p class="text-gray-400 text-sm mb-3">Ops Lead</p>
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-400">Status</span>
+                        <span class="text-green-400">Active</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Recent Activity -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-semibold mb-6">Recent Activity</h2>
+            
+            <div class="glass rounded-2xl p-8">
+                <div class="space-y-4">
+                    <div class="flex items-center space-x-4 p-4 rounded-xl hover:bg-white/5 transition-colors">
+                        <div class="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                            <i data-feather="code" class="w-5 h-5 text-blue-400"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-medium">Archimedes</div>
+                            <div class="text-gray-400 text-sm">Completed MARL Environment Template</div>
+                        </div>
+                        <div class="text-gray-500 text-sm">2m ago</div>
+                    </div>
+                    
+                    <div class="flex items-center space-x-4 p-4 rounded-xl hover:bg-white/5 transition-colors">
+                        <div class="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                            <i data-feather="git-branch" class="w-5 h-5 text-purple-400"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-medium">Marcus</div>
+                            <div class="text-gray-400 text-sm">Deployed research environment v2.3</div>
+                        </div>
+                        <div class="text-gray-500 text-sm">15m ago</div>
+                    </div>
+                    
+                    <div class="flex items-center space-x-4 p-4 rounded-xl hover:bg-white/5 transition-colors">
+                        <div class="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
+                            <i data-feather="shield" class="w-5 h-5 text-green-400"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-medium">Argus</div>
+                            <div class="text-gray-400 text-sm">Completed security audit</div>
+                        </div>
+                        <div class="text-gray-500 text-sm">1h ago</div>
+                    </div>
+                </div>
+                
+                <div class="mt-6 text-center">
+                    <button class="text-blue-400 hover:text-blue-300 transition-colors">
+                        View all activity →
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="glass border-t border-white/10 mt-16">
+        <div class="max-w-7xl mx-auto px-6 py-8">
+            <div class="text-center text-gray-400">
+                <p>Squad Operations Platform</p>
+                <p class="text-sm mt-2">Last updated: Just now</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize Feather Icons
+        feather.replace();
+        
+        // Update timestamp
+        function updateTime() {
+            const now = new Date();
+            const elements = document.querySelectorAll('[data-time]');
+            elements.forEach(el => {
+                el.textContent = 'Just now';
+            });
+        }
+        
+        // Auto-refresh every 30 seconds
+        setInterval(updateTime, 30000);
+    </script>
+</body>
+</html>

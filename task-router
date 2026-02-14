@@ -1,0 +1,566 @@
+#!/usr/bin/env python3
+"""
+Task Router CLI Tool for Squad Operations
+Manages task routing, workflows, and queues across specialized agents
+"""
+
+import argparse
+import json
+import os
+import sys
+import datetime
+import uuid
+from pathlib import Path
+from typing import Dict, List, Optional, Any
+
+class TaskRouter:
+    def __init__(self, workspace_path: str = "/home/exedev/.openclaw/workspace"):
+        self.workspace_path = Path(workspace_path)
+        self.tasks_dir = self.workspace_path / "tasks"
+        self.queues_file = self.tasks_dir / "queues.json"
+        self.workflows_file = self.tasks_dir / "workflows.json"
+        self.history_file = self.tasks_dir / "history.json"
+        
+        self.agent_types = {
+            "marcus": "research",
+            "archimedes": "engineering", 
+            "argus": "ops",
+            "galen": "biotech"
+        }
+        
+        self.priorities = ["low", "medium", "high", "critical"]
+        self.priority_values = {"low": 1, "medium": 2, "high": 3, "critical": 4}
+        
+        self.setup_storage()
+    
+    def setup_storage(self):
+        """Initialize storage files and directories"""
+        self.tasks_dir.mkdir(exist_ok=True)
+        
+        # Initialize queues file
+        if not self.queues_file.exists():
+            self.init_queues_file()
+        
+        # Initialize workflows file
+        if not self.workflows_file.exists():
+            self.init_workflows_file()
+        
+        # Initialize history file
+        if not self.history_file.exists():
+            self.init_history_file()
+    
+    def init_queues_file(self):
+        """Initialize task queues storage"""
+        queues = {
+            "created": datetime.datetime.now().isoformat(),
+            "tasks": {},
+            "next_task_id": 1
+        }
+        
+        with open(self.queues_file, 'w') as f:
+            json.dump(queues, f, indent=2)
+    
+    def init_workflows_file(self):
+        """Initialize workflows storage"""
+        workflows = {
+            "created": datetime.datetime.now().isoformat(),
+            "workflows": {},
+            "next_workflow_id": 1
+        }
+        
+        with open(self.workflows_file, 'w') as f:
+            json.dump(workflows, f, indent=2)
+    
+    def init_history_file(self):
+        """Initialize task history storage"""
+        history = {
+            "created": datetime.datetime.now().isoformat(),
+            "completed_tasks": [],
+            "stats": {
+                "total_completed": 0,
+                "by_agent": {agent: 0 for agent in self.agent_types.keys()},
+                "by_priority": {priority: 0 for priority in self.priorities},
+                "by_type": {agent_type: 0 for agent_type in self.agent_types.values()}
+            }
+        }
+        
+        with open(self.history_file, 'w') as f:
+            json.dump(history, f, indent=2)
+    
+    def get_next_task_id(self):
+        """Get next task ID"""
+        with open(self.queues_file, 'r') as f:
+            queues = json.load(f)
+        
+        task_id = queues["next_task_id"]
+        queues["next_task_id"] += 1
+        
+        with open(self.queues_file, 'w') as f:
+            json.dump(queues, f, indent=2)
+        
+        return f"task-{task_id:04d}"
+    
+    def get_next_workflow_id(self):
+        """Get next workflow ID"""
+        with open(self.workflows_file, 'r') as f:
+            workflows = json.load(f)
+        
+        workflow_id = workflows["next_workflow_id"]
+        workflows["next_workflow_id"] += 1
+        
+        with open(self.workflows_file, 'w') as f:
+            json.dump(workflows, f, indent=2)
+        
+        return f"workflow-{workflow_id:03d}"
+    
+    def route_task(self, title: str, task_type: str, priority: str, agent: str, description: str = "") -> str:
+        """Route a new task to an agent"""
+        if agent not in self.agent_types:
+            raise ValueError(f"Invalid agent. Must be one of: {list(self.agent_types.keys())}")
+        
+        if priority not in self.priorities:
+            raise ValueError(f"Invalid priority. Must be one of: {self.priorities}")
+        
+        task_id = self.get_next_task_id()
+        
+        task = {
+            "id": task_id,
+            "title": title,
+            "type": task_type,
+            "agent_type": self.agent_types[agent],
+            "assigned_agent": agent,
+            "priority": priority,
+            "priority_value": self.priority_values[priority],
+            "description": description,
+            "status": "pending",
+            "created_at": datetime.datetime.now().isoformat(),
+            "updated_at": datetime.datetime.now().isoformat(),
+            "workflow_id": None
+        }
+        
+        # Load queues
+        with open(self.queues_file, 'r') as f:
+            queues = json.load(f)
+        
+        queues["tasks"][task_id] = task
+        
+        with open(self.queues_file, 'w') as f:
+            json.dump(queues, f, indent=2)
+        
+        return task_id
+    
+    def list_queues(self, agent: str = "all", sort: str = "created") -> List[Dict[str, Any]]:
+        """List tasks in queues with optional filtering and sorting"""
+        with open(self.queues_file, 'r') as f:
+            queues = json.load(f)
+        
+        tasks = list(queues["tasks"].values())
+        
+        # Filter by agent
+        if agent != "all" and agent in self.agent_types:
+            tasks = [t for t in tasks if t["assigned_agent"] == agent]
+        
+        # Sort tasks
+        if sort == "priority":
+            tasks.sort(key=lambda x: (-x["priority_value"], x["created_at"]))
+        elif sort == "created":
+            tasks.sort(key=lambda x: x["created_at"], reverse=True)
+        elif sort == "title":
+            tasks.sort(key=lambda x: x["title"])
+        
+        return tasks
+    
+    def assign_task(self, task_id: str, agent: str) -> bool:
+        """Assign a task to a different agent"""
+        if agent not in self.agent_types:
+            raise ValueError(f"Invalid agent. Must be one of: {list(self.agent_types.keys())}")
+        
+        with open(self.queues_file, 'r') as f:
+            queues = json.load(f)
+        
+        if task_id not in queues["tasks"]:
+            return False
+        
+        queues["tasks"][task_id]["assigned_agent"] = agent
+        queues["tasks"][task_id]["agent_type"] = self.agent_types[agent]
+        queues["tasks"][task_id]["updated_at"] = datetime.datetime.now().isoformat()
+        
+        with open(self.queues_file, 'w') as f:
+            json.dump(queues, f, indent=2)
+        
+        return True
+    
+    def complete_task(self, task_id: str) -> bool:
+        """Complete a task and move to history"""
+        with open(self.queues_file, 'r') as f:
+            queues = json.load(f)
+        
+        if task_id not in queues["tasks"]:
+            return False
+        
+        task = queues["tasks"][task_id]
+        task["status"] = "completed"
+        task["completed_at"] = datetime.datetime.now().isoformat()
+        
+        # Add to history
+        with open(self.history_file, 'r') as f:
+            history = json.load(f)
+        
+        history["completed_tasks"].append(task)
+        history["stats"]["total_completed"] += 1
+        history["stats"]["by_agent"][task["assigned_agent"]] += 1
+        history["stats"]["by_priority"][task["priority"]] += 1
+        history["stats"]["by_type"][task["agent_type"]] += 1
+        
+        with open(self.history_file, 'w') as f:
+            json.dump(history, f, indent=2)
+        
+        # Remove from queues
+        del queues["tasks"][task_id]
+        
+        with open(self.queues_file, 'w') as f:
+            json.dump(queues, f, indent=2)
+        
+        return True
+    
+    def create_workflow(self, name: str, steps: str, description: str = "") -> str:
+        """Create a workflow with sequential steps"""
+        workflow_id = self.get_next_workflow_id()
+        
+        # Parse steps (format: agent:task_type,agent:task_type)
+        step_list = []
+        for step in steps.split(','):
+            try:
+                agent, task_type = step.strip().split(':')
+                if agent not in self.agent_types:
+                    raise ValueError(f"Invalid agent in step: {agent}")
+                step_list.append({
+                    "agent": agent,
+                    "task_type": task_type.strip(),
+                    "status": "pending",
+                    "task_id": None
+                })
+            except ValueError:
+                raise ValueError(f"Invalid step format: {step}. Use format: agent:task_type")
+        
+        workflow = {
+            "id": workflow_id,
+            "name": name,
+            "description": description,
+            "steps": step_list,
+            "status": "created",
+            "current_step": 0,
+            "created_at": datetime.datetime.now().isoformat(),
+            "updated_at": datetime.datetime.now().isoformat()
+        }
+        
+        with open(self.workflows_file, 'r') as f:
+            workflows = json.load(f)
+        
+        workflows["workflows"][workflow_id] = workflow
+        
+        with open(self.workflows_file, 'w') as f:
+            json.dump(workflows, f, indent=2)
+        
+        return workflow_id
+    
+    def list_workflows(self) -> List[Dict[str, Any]]:
+        """List all workflows"""
+        with open(self.workflows_file, 'r') as f:
+            workflows = json.load(f)
+        
+        return list(workflows["workflows"].values())
+    
+    def run_workflow(self, workflow_id: str) -> bool:
+        """Run a workflow (create tasks for all steps)"""
+        with open(self.workflows_file, 'r') as f:
+            workflows = json.load(f)
+        
+        if workflow_id not in workflows["workflows"]:
+            return False
+        
+        workflow = workflows["workflows"][workflow_id]
+        
+        if workflow["status"] != "created":
+            return False
+        
+        # Create tasks for each step
+        for i, step in enumerate(workflow["steps"]):
+            agent = step["agent"]
+            task_type = step["task_type"]
+            
+            task_id = self.route_task(
+                title=f"{workflow['name']} - Step {i+1}",
+                task_type=task_type,
+                priority="medium",
+                agent=agent,
+                description=f"Workflow '{workflow['name']}' step {i+1}: {workflow['description']}"
+            )
+            
+            step["task_id"] = task_id
+        
+        workflow["status"] = "running"
+        workflow["current_step"] = 0
+        workflow["updated_at"] = datetime.datetime.now().isoformat()
+        
+        with open(self.workflows_file, 'w') as f:
+            json.dump(workflows, f, indent=2)
+        
+        return True
+    
+    def list_history(self, agent: str = "all", last_n: int = None) -> List[Dict[str, Any]]:
+        """List completed tasks from history"""
+        with open(self.history_file, 'r') as f:
+            history = json.load(f)
+        
+        tasks = history["completed_tasks"]
+        
+        # Filter by agent
+        if agent != "all" and agent in self.agent_types:
+            tasks = [t for t in tasks if t["assigned_agent"] == agent]
+        
+        # Sort by completion time (newest first)
+        tasks.sort(key=lambda x: x["completed_at"], reverse=True)
+        
+        # Limit if specified
+        if last_n:
+            tasks = tasks[:last_n]
+        
+        return tasks
+    
+    def get_task_history(self, task_id: str) -> Optional[Dict[str, Any]]:
+        """Get specific task from history"""
+        with open(self.history_file, 'r') as f:
+            history = json.load(f)
+        
+        for task in history["completed_tasks"]:
+            if task["id"] == task_id:
+                return task
+        
+        return None
+    
+    def get_stats(self) -> Dict[str, Any]:
+        """Get completion statistics"""
+        with open(self.history_file, 'r') as f:
+            history = json.load(f)
+        
+        return history["stats"]
+
+def main():
+    parser = argparse.ArgumentParser(description="Task Router CLI Tool for Squad Operations")
+    parser.add_argument("--workspace", default="/home/exedev/.openclaw/workspace", 
+                       help="Workspace path for task storage")
+    
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+    
+    # route-task command
+    route_parser = subparsers.add_parser("route-task", help="Route a new task to an agent")
+    route_parser.add_argument("title", help="Task title")
+    route_parser.add_argument("--type", required=True, help="Task type")
+    route_parser.add_argument("--priority", default="medium", choices=["low", "medium", "high", "critical"],
+                              help="Task priority")
+    route_parser.add_argument("--agent", required=True,
+                              choices=["marcus", "archimedes", "argus", "galen"],
+                              help="Target agent")
+    route_parser.add_argument("--description", default="", help="Task description")
+    
+    # queue command
+    queue_parser = subparsers.add_parser("queue", help="Manage task queues")
+    queue_subparsers = queue_parser.add_subparsers(dest="queue_action", help="Queue actions")
+    
+    queue_list_parser = queue_subparsers.add_parser("list", help="List tasks in queues")
+    queue_list_parser.add_argument("--agent", default="all",
+                                   choices=["all", "marcus", "archimedes", "argus", "galen"],
+                                   help="Filter by agent")
+    queue_list_parser.add_argument("--sort", default="created", choices=["created", "priority", "title"],
+                                   help="Sort tasks by")
+    
+    queue_assign_parser = queue_subparsers.add_parser("assign", help="Assign task to agent")
+    queue_assign_parser.add_argument("task_id", help="Task ID")
+    queue_assign_parser.add_argument("--agent", required=True,
+                                      choices=["marcus", "archimedes", "argus", "galen"],
+                                      help="Target agent")
+    
+    queue_complete_parser = queue_subparsers.add_parser("complete", help="Complete a task")
+    queue_complete_parser.add_argument("task_id", help="Task ID")
+    
+    # workflow command
+    workflow_parser = subparsers.add_parser("workflow", help="Manage workflows")
+    workflow_subparsers = workflow_parser.add_subparsers(dest="workflow_action", help="Workflow actions")
+    
+    workflow_create_parser = workflow_subparsers.add_parser("create", help="Create workflow")
+    workflow_create_parser.add_argument("name", help="Workflow name")
+    workflow_create_parser.add_argument("--steps", required=True,
+                                         help="Workflow steps (format: agent:task_type,agent:task_type)")
+    workflow_create_parser.add_argument("--description", default="", help="Workflow description")
+    
+    workflow_list_parser = workflow_subparsers.add_parser("list", help="List workflows")
+    
+    workflow_run_parser = workflow_subparsers.add_parser("run", help="Run workflow")
+    workflow_run_parser.add_argument("workflow_id", help="Workflow ID")
+    
+    # history command
+    history_parser = subparsers.add_parser("history", help="View task history")
+    history_subparsers = history_parser.add_subparsers(dest="history_action", help="History actions")
+    
+    history_list_parser = history_subparsers.add_parser("list", help="List completed tasks")
+    history_list_parser.add_argument("--agent", default="all",
+                                      choices=["all", "marcus", "archimedes", "argus", "galen"],
+                                      help="Filter by agent")
+    history_list_parser.add_argument("--last", type=int, help="Show last N tasks")
+    
+    history_show_parser = history_subparsers.add_parser("show", help="Show specific task")
+    history_show_parser.add_argument("task_id", help="Task ID")
+    
+    history_stats_parser = history_subparsers.add_parser("stats", help="Show completion statistics")
+    
+    args = parser.parse_args()
+    
+    if not args.command:
+        parser.print_help()
+        return
+    
+    tr = TaskRouter(args.workspace)
+    
+    if args.command == "route-task":
+        try:
+            task_id = tr.route_task(args.title, args.type, args.priority, args.agent, args.description)
+            print(f"Task routed successfully with ID: {task_id}")
+            print(f"Assigned to: {args.agent} ({tr.agent_types[args.agent]})")
+            print(f"Priority: {args.priority}")
+        except ValueError as e:
+            print(f"Error: {e}")
+    
+    elif args.command == "queue":
+        if args.queue_action == "list":
+            tasks = tr.list_queues(args.agent, args.sort)
+            
+            if not tasks:
+                print("No tasks found")
+            else:
+                print(f"Found {len(tasks)} tasks:")
+                for task in tasks:
+                    print(f"\nID: {task['id']}")
+                    print(f"Title: {task['title']}")
+                    print(f"Type: {task['type']}")
+                    print(f"Agent: {task['assigned_agent']} ({task['agent_type']})")
+                    print(f"Priority: {task['priority']}")
+                    print(f"Status: {task['status']}")
+                    print(f"Created: {task['created_at']}")
+                    if task.get('description'):
+                        print(f"Description: {task['description']}")
+        
+        elif args.queue_action == "assign":
+            if tr.assign_task(args.task_id, args.agent):
+                print(f"Task {args.task_id} assigned to {args.agent}")
+            else:
+                print(f"Task {args.task_id} not found")
+        
+        elif args.queue_action == "complete":
+            if tr.complete_task(args.task_id):
+                print(f"Task {args.task_id} completed successfully")
+            else:
+                print(f"Task {args.task_id} not found")
+        
+        else:
+            queue_parser.print_help()
+    
+    elif args.command == "workflow":
+        if args.workflow_action == "create":
+            try:
+                workflow_id = tr.create_workflow(args.name, args.steps, args.description)
+                print(f"Workflow created successfully with ID: {workflow_id}")
+                
+                # Show workflow details
+                workflows = tr.list_workflows()
+                workflow = next((w for w in workflows if w['id'] == workflow_id), None)
+                if workflow:
+                    print(f"\nWorkflow: {workflow['name']}")
+                    print(f"Steps: {len(workflow['steps'])}")
+                    for i, step in enumerate(workflow['steps']):
+                        print(f"  {i+1}. {step['agent']} - {step['task_type']}")
+            except ValueError as e:
+                print(f"Error: {e}")
+        
+        elif args.workflow_action == "list":
+            workflows = tr.list_workflows()
+            
+            if not workflows:
+                print("No workflows found")
+            else:
+                print(f"Found {len(workflows)} workflows:")
+                for workflow in workflows:
+                    print(f"\nID: {workflow['id']}")
+                    print(f"Name: {workflow['name']}")
+                    print(f"Status: {workflow['status']}")
+                    print(f"Steps: {len(workflow['steps'])}")
+                    if workflow.get('description'):
+                        print(f"Description: {workflow['description']}")
+        
+        elif args.workflow_action == "run":
+            if tr.run_workflow(args.workflow_id):
+                print(f"Workflow {args.workflow_id} started successfully")
+            else:
+                print(f"Workflow {args.workflow_id} not found or already running")
+        
+        else:
+            workflow_parser.print_help()
+    
+    elif args.command == "history":
+        if args.history_action == "list":
+            tasks = tr.list_history(args.agent, args.last)
+            
+            if not tasks:
+                print("No completed tasks found")
+            else:
+                print(f"Found {len(tasks)} completed tasks:")
+                for task in tasks:
+                    print(f"\nID: {task['id']}")
+                    print(f"Title: {task['title']}")
+                    print(f"Agent: {task['assigned_agent']}")
+                    print(f"Completed: {task['completed_at']}")
+                    print(f"Duration: {(datetime.datetime.fromisoformat(task['completed_at']) - datetime.datetime.fromisoformat(task['created_at'])).total_seconds():.0f}s")
+        
+        elif args.history_action == "show":
+            task = tr.get_task_history(args.task_id)
+            
+            if not task:
+                print(f"Task {args.task_id} not found in history")
+            else:
+                print(f"Task ID: {task['id']}")
+                print(f"Title: {task['title']}")
+                print(f"Type: {task['type']}")
+                print(f"Agent: {task['assigned_agent']} ({task['agent_type']})")
+                print(f"Priority: {task['priority']}")
+                print(f"Status: {task['status']}")
+                print(f"Created: {task['created_at']}")
+                print(f"Completed: {task['completed_at']}")
+                if task.get('description'):
+                    print(f"Description: {task['description']}")
+        
+        elif args.history_action == "stats":
+            stats = tr.get_stats()
+            
+            print("Task Completion Statistics:")
+            print(f"Total Completed: {stats['total_completed']}")
+            
+            print("\nBy Agent:")
+            for agent, count in stats['by_agent'].items():
+                print(f"  {agent}: {count}")
+            
+            print("\nBy Priority:")
+            for priority, count in stats['by_priority'].items():
+                print(f"  {priority}: {count}")
+            
+            print("\nBy Type:")
+            for task_type, count in stats['by_type'].items():
+                print(f"  {task_type}: {count}")
+        
+        else:
+            history_parser.print_help()
+    
+    else:
+        parser.print_help()
+
+if __name__ == "__main__":
+    main()
