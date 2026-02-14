@@ -1,0 +1,737 @@
+#!/usr/bin/env python3
+"""
+Self-Directed Research Agent Template
+
+Template for building self-directed research agents with:
+- Multi-heartbeat research accumulation
+- Scratch file working memory
+- Quality gates and output templates
+- Format rotation
+
+Based on Marcus/Galen patterns but generalized for any research domain.
+
+Usage:
+    research-agent --template domain > my-research-agent.py
+    research-agent --init-config --domain biotech > research-config.json
+    research-agent --demo
+
+Creates complete, runnable research agents with MIT license for open source distribution.
+"""
+
+import argparse
+import json
+import os
+import sys
+import time
+from datetime import datetime, timedelta
+from pathlib import Path
+
+
+def create_research_agent_template(domain="general"):
+    """Create a complete research agent template."""
+    
+    template = f'''#!/usr/bin/env python3
+"""
+{domain.title()} Research Agent
+
+Self-directed research agent for {domain} domain intelligence.
+Multi-heartbeat accumulation with quality gates and structured outputs.
+
+Usage:
+    {domain.lower()}-research-agent --config research.json
+    {domain.lower()}-research-agent --heartbeat
+    {domain.lower()}-research-agent --query "research topic"
+
+MIT License - Open Source Research Framework
+"""
+
+import argparse
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+from datetime import datetime, timedelta
+from pathlib import Path
+
+
+class {domain.title().replace(' ', '')}ResearchAgent:
+    """Self-directed research agent for {domain} domain."""
+    
+    def __init__(self, config_file=None):
+        """Initialize the research agent."""
+        self.config = self.load_config(config_file)
+        self.scratch_file = self.config.get("scratch_file", "./research_scratch.md")
+        self.output_dir = self.config.get("output_dir", "./outputs")
+        self.ensure_directories()
+        
+    def load_config(self, config_file):
+        """Load agent configuration."""
+        if config_file and os.path.exists(config_file):
+            try:
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, IOError) as e:
+                print(f"Error loading config: {{e}}", file=sys.stderr)
+        
+        # Default configuration
+        return {{
+            "domain": "{domain}",
+            "agent_name": "{domain.title()} Research Agent",
+            "version": "1.0",
+            "heartbeat_interval": 32,
+            "max_outputs_per_day": 5,
+            "quality_threshold": 6.0,
+            "research_topics": [
+                "latest developments in {domain}",
+                "competitive intelligence",
+                "regulatory changes",
+                "market trends"
+            ],
+            "output_formats": ["executive_brief", "detailed_analysis", "competitive_alert"],
+            "search_queries": {{
+                "news": ["{domain} news latest", "{domain} developments 2026"],
+                "research": ["{domain} research papers", "{domain} studies"],
+                "competitive": ["{domain} market leaders", "{domain} competition"]
+            }},
+            "scratch_file": "./research_scratch.md",
+            "output_dir": "./outputs"
+        }}
+    
+    def ensure_directories(self):
+        """Ensure required directories exist."""
+        os.makedirs(self.output_dir, exist_ok=True)
+        
+        # Ensure scratch file exists
+        if not os.path.exists(self.scratch_file):
+            self.init_scratch_file()
+    
+    def init_scratch_file(self):
+        """Initialize the scratch file with template."""
+        scratch_content = f"""# {domain.title()} Research Scratch - {{datetime.now().strftime('%Y-%m-%d')}}
+
+## Current Research Topics
+- Topic 1: [Description]
+- Topic 2: [Description]
+
+## Sources Found
+[URLs and notes will accumulate here]
+
+## Insights & Connections
+[Cross-topic insights will appear here]
+
+## Quality Checklist
+- [ ] Minimum 5 sources
+- [ ] Key company names mentioned
+- [ ] Quantitative data included
+- [ ] Specific dates referenced
+- [ ] Executive summary drafted
+
+## Output Plan
+- [ ] Executive brief prepared
+- [ ] Detailed analysis written
+- [ ] Competitive alerts identified
+"""
+        with open(self.scratch_file, 'w', encoding='utf-8') as f:
+            f.write(scratch_content)
+    
+    def load_scratch_content(self):
+        """Load current scratch file content."""
+        try:
+            with open(self.scratch_file, 'r', encoding='utf-8') as f:
+                return f.read()
+        except IOError:
+            return ""
+    
+    def update_scratch(self, section, content):
+        """Update specific section of scratch file."""
+        current = self.load_scratch_content()
+        
+        # Find the section
+        section_pattern = f"## {{section}}"
+        
+        if section_pattern in current:
+            # Replace section content
+            start = current.find(section_pattern)
+            next_section = current.find("\\n## ", start + len(section_pattern) + 1)
+            
+            if next_section != -1:
+                new_content = current[:start] + section_pattern + "\\n\\n" + content + "\\n\\n" + current[next_section:]
+            else:
+                new_content = current[:start] + section_pattern + "\\n\\n" + content + "\\n"
+        else:
+            # Add new section at end
+            new_content = current + f"\\n\\n## {{section}}\\n\\n{{content}}\\n"
+        
+        with open(self.scratch_file, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+    
+    def search_web(self, query, max_results=5):
+        """Perform web search using search tool."""
+        search_tool = os.path.expanduser("~/.openclaw/workspace/tools/search.py")
+        
+        if not os.path.exists(search_tool):
+            print("Warning: search.py tool not available", file=sys.stderr)
+            return []
+        
+        try:
+            result = subprocess.run(
+                [search_tool, query, str(max_results)],
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+            
+            if result.returncode == 0:
+                return self.parse_search_results(result.stdout)
+            else:
+                print(f"Search failed: {{result.stderr}}", file=sys.stderr)
+                return []
+        
+        except subprocess.TimeoutExpired:
+            print("Search timed out", file=sys.stderr)
+            return []
+        except Exception as e:
+            print(f"Search error: {{e}}", file=sys.stderr)
+            return []
+    
+    def parse_search_results(self, search_output):
+        """Parse search tool output into structured results."""
+        results = []
+        
+        for line in search_output.split('\\n'):
+            line = line.strip()
+            if line and ('http://' in line or 'https://' in line):
+                # Extract URL and title
+                parts = line.split(' ', 1)
+                if len(parts) >= 2:
+                    url = parts[0]
+                    title = parts[1]
+                    results.append({{"url": url, "title": title}})
+        
+        return results
+    
+    def fetch_content(self, url):
+        """Fetch content from URL using web-read tool."""
+        web_read_tool = os.path.expanduser("~/.openclaw/workspace/tools/web-read.py")
+        
+        if not os.path.exists(web_read_tool):
+            print("Warning: web-read.py tool not available", file=sys.stderr)
+            return ""
+        
+        try:
+            result = subprocess.run(
+                [web_read_tool, url],
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+            
+            if result.returncode == 0:
+                return result.stdout
+            else:
+                print(f"Content fetch failed for {{url}}: {{result.stderr}}", file=sys.stderr)
+                return ""
+        
+        except subprocess.TimeoutExpired:
+            print(f"Content fetch timed out for {{url}}", file=sys.stderr)
+            return ""
+        except Exception as e:
+            print(f"Content fetch error for {{url}}: {{e}}", file=sys.stderr)
+            return ""
+    
+    def accumulate_research(self, topic):
+        """Accumulate research on a specific topic across multiple heartbeats."""
+        print(f"🔍 Researching: {{topic}}")
+        
+        # Generate search queries for this topic
+        queries = self.generate_search_queries(topic)
+        
+        all_results = []
+        sources_content = []
+        
+        for query in queries[:3]:  # Limit to 3 queries per topic
+            print(f"📊 Searching: {{query}}")
+            results = self.search_web(query, max_results=3)
+            all_results.extend(results)
+            
+            # Fetch content for top results
+            for result in results[:2]:  # Limit content fetching
+                content = self.fetch_content(result["url"])
+                if content:
+                    sources_content.append({{
+                        "url": result["url"],
+                        "title": result["title"],
+                        "content": content[:2000]  # Limit content size
+                    }})
+                
+                time.sleep(1)  # Rate limiting
+        
+        # Update scratch with findings
+        self.update_scratch_with_research(topic, all_results, sources_content)
+        
+        return all_results, sources_content
+    
+    def generate_search_queries(self, topic):
+        """Generate effective search queries for the topic."""
+        base_queries = []
+        
+        # Domain-specific queries
+        for category, queries in self.config["search_queries"].items():
+            for query in queries:
+                if "{domain}" in query:
+                    query = query.replace("{domain}", topic.lower())
+                base_queries.append(query)
+        
+        # Time-based queries
+        current_year = datetime.now().year
+        time_queries = [
+            f"{{topic}} {{current_year}} latest",
+            f"{{topic}} recent developments",
+            f"{{topic}} {{current_year-1}} {{current_year}} trends"
+        ]
+        base_queries.extend(time_queries)
+        
+        return base_queries
+    
+    def update_scratch_with_research(self, topic, results, sources_content):
+        """Update scratch file with new research findings."""
+        # Prepare sources section
+        sources_text = []
+        for result in results[:10]:  # Limit to top 10
+            sources_text.append(f"- [{{result['title']}}]({{result['url']}})")
+        
+        sources_section = "\\n".join(sources_text)
+        self.update_scratch("Sources Found", sources_section)
+        
+        # Extract key insights from content
+        insights = self.extract_insights(sources_content)
+        if insights:
+            insights_text = "\\n".join([f"- {{insight}}" for insight in insights])
+            self.update_scratch("Insights & Connections", insights_text)
+    
+    def extract_insights(self, sources_content):
+        """Extract key insights from accumulated content."""
+        insights = []
+        
+        for source in sources_content:
+            content = source["content"]
+            
+            # Look for significant statements
+            sentences = content.split('.')
+            for sentence in sentences:
+                sentence = sentence.strip()
+                if len(sentence) > 50 and any(keyword in sentence.lower() for keyword in [
+                    "announced", "launched", "developed", "breakthrough", "significant",
+                    "major", "first", "new", "innovative", "advanced", "patented"
+                ]):
+                    insights.append(f"{{source['title']}}: {{sentence[:200]}}...")
+                    
+                    if len(insights) >= 5:  # Limit insights
+                        break
+            
+            if len(insights) >= 5:
+                break
+        
+        return insights
+    
+    def check_quality_gates(self, content):
+        """Check if content meets quality thresholds."""
+        score = 0
+        
+        # Source count
+        url_pattern = r'https?://[^\\s\\)]+(?=\\)|\\s|$)'
+        urls = re.findall(url_pattern, content)
+        if len(urls) >= 5:
+            score += 2
+        elif len(urls) >= 3:
+            score += 1
+        
+        # Content length
+        word_count = len(content.split())
+        if word_count >= 500:
+            score += 2
+        elif word_count >= 300:
+            score += 1
+        
+        # Specificity
+        specificity_indicators = ["%", "$", "USD", "billion", "million", "2026", "2025"]
+        specificity_count = sum(1 for indicator in specificity_indicators if indicator in content)
+        if specificity_count >= 3:
+            score += 2
+        elif specificity_count >= 1:
+            score += 1
+        
+        # Structure
+        if "## " in content and "- " in content:
+            score += 1
+        
+        return score >= self.config["quality_threshold"]
+    
+    def generate_output(self, format_type="executive_brief"):
+        """Generate research output in specified format."""
+        scratch_content = self.load_scratch_content()
+        
+        if not self.check_quality_gates(scratch_content):
+            print("⚠️  Content does not meet quality threshold", file=sys.stderr)
+            return None
+        
+        if format_type == "executive_brief":
+            return self.create_executive_brief(scratch_content)
+        elif format_type == "detailed_analysis":
+            return self.create_detailed_analysis(scratch_content)
+        elif format_type == "competitive_alert":
+            return self.create_competitive_alert(scratch_content)
+        else:
+            return scratch_content
+    
+    def create_executive_brief(self, content):
+        """Create executive brief format."""
+        brief = []
+        brief.append(f"# {{self.config['agent_name']}} - Executive Brief")
+        brief.append(f"**Date:** {{datetime.now().strftime('%Y-%m-%d')}}")
+        brief.append(f"**Domain:** {{self.config['domain']}}")
+        brief.append("")
+        
+        # Extract key findings
+        brief.append("## Key Findings")
+        brief.append("")
+        
+        # Extract bullet points from content
+        lines = content.split('\\n')
+        for line in lines:
+            line = line.strip()
+            if line.startswith('- ') and len(line) > 20:
+                brief.append(line)
+        
+        brief.append("")
+        brief.append("## Sources")
+        brief.append("")
+        
+        # Extract URLs
+        url_pattern = r'https?://[^\\s\\)]+(?=\\)|\\s|$)'
+        urls = re.findall(url_pattern, content)
+        for url in urls[:10]:
+            brief.append(f"- {{url}}")
+        
+        brief.append("")
+        brief.append("---")
+        brief.append("*Generated by {{self.config['agent_name']}} v{{self.config['version']}}*")
+        
+        return "\\n".join(brief)
+    
+    def create_detailed_analysis(self, content):
+        """Create detailed analysis format."""
+        return content  # Return scratch content as-is for detailed analysis
+    
+    def create_competitive_alert(self, content):
+        """Create competitive alert format."""
+        alert = []
+        alert.append(f"🚨 COMPETITIVE INTELLIGENCE ALERT")
+        alert.append(f"**From:** {{self.config['agent_name']}}")
+        alert.append(f"**Time:** {{datetime.now().strftime('%Y-%m-%d %H:%M')}}")
+        alert.append("")
+        
+        # Look for competitive mentions
+        competitive_keywords = ["competitor", "competition", "market share", "launched", "acquired"]
+        lines = content.split('\\n')
+        
+        for line in lines:
+            if any(keyword in line.lower() for keyword in competitive_keywords):
+                alert.append(f"🔸 {{line.strip()}}")
+        
+        alert.append("")
+        alert.append("---")
+        alert.append("*Action Required: Review competitive implications*")
+        
+        return "\\n".join(alert)
+    
+    def save_output(self, content, format_type):
+        """Save output to file."""
+        timestamp = datetime.now().strftime('%Y-%m-%d')
+        filename = f"{{timestamp}}-{{self.config['domain'].replace(' ', '-')}}-{{format_type}}.md"
+        filepath = os.path.join(self.output_dir, filename)
+        
+        try:
+            with open(filepath, 'w', encoding='utf-8') as f:
+                f.write(content)
+            print(f"✅ Output saved: {{filepath}}")
+            return filepath
+        except IOError as e:
+            print(f"Error saving output: {{e}}", file=sys.stderr)
+            return None
+    
+    def run_heartbeat(self):
+        """Run a single heartbeat cycle."""
+        print(f"💓 {{self.config['agent_name']}} heartbeat - {{datetime.now().strftime('%H:%M:%S')}}")
+        
+        # Get current research topic or select one
+        current_topic = self.get_current_research_topic()
+        
+        if current_topic:
+            # Accumulate research
+            results, sources = self.accumulate_research(current_topic)
+            
+            # Check if ready to generate output
+            if self.should_generate_output():
+                format_type = self.select_output_format()
+                output = self.generate_output(format_type)
+                
+                if output:
+                    self.save_output(output, format_type)
+                    print(f"✅ Generated {{format_type}} output")
+                else:
+                    print("⏳ Continuing research accumulation")
+            else:
+                print(f"🔄 Continuing research on: {{current_topic}}")
+        else:
+            print("🎯 Selecting research topic...")
+            self.select_next_topic()
+        
+        return True
+    
+    def get_current_research_topic(self):
+        """Get current research topic from scratch file."""
+        content = self.load_scratch_content()
+        
+        # Look for current topics section
+        if "## Current Research Topics" in content:
+            start = content.find("## Current Research Topics")
+            end = content.find("\\n## ", start + 1)
+            
+            if end == -1:
+                end = len(content)
+            
+            section = content[start:end]
+            
+            # Extract first non-completed topic
+            for line in section.split('\\n'):
+                if line.startswith('- ') and '[x]' not in line:
+                    # Extract topic name
+                    topic_match = re.match(r'- \\[ \\] (.+?):', line)
+                    if topic_match:
+                        return topic_match.group(1).strip()
+        
+        return None
+    
+    def should_generate_output(self):
+        """Check if enough research has been accumulated."""
+        content = self.load_scratch_content()
+        
+        # Count sources
+        url_pattern = r'https?://[^\\s\\)]+(?=\\)|\\s|$)'
+        urls = re.findall(url_pattern, content)
+        
+        # Check word count
+        word_count = len(content.split())
+        
+        return len(urls) >= 3 and word_count >= 300
+    
+    def select_output_format(self):
+        """Select appropriate output format based on rotation."""
+        formats = self.config["output_formats"]
+        
+        # Simple rotation based on day of week
+        day_index = datetime.now().weekday()
+        return formats[day_index % len(formats)]
+    
+    def select_next_topic(self):
+        """Select next research topic from config."""
+        topics = self.config["research_topics"]
+        
+        if topics:
+            # Simple selection - could be made more sophisticated
+            next_topic = topics[0]
+            
+            # Update scratch with new topic
+            topics_text = f"- [ ] {{next_topic}}: Initial research phase"
+            for topic in topics[1:]:
+                topics_text += f"\\n- [ ] {{topic}}: Pending"
+            
+            self.update_scratch("Current Research Topics", topics_text)
+    
+    def run_query(self, query):
+        """Run immediate research query."""
+        print(f"🔍 Running query: {{query}}")
+        
+        results, sources = self.accumulate_research(query)
+        
+        # Generate immediate output
+        format_type = "executive_brief"
+        output = self.generate_output(format_type)
+        
+        if output:
+            print("\\n" + "="*60)
+            print(output)
+            print("="*60)
+            return output
+        
+        return None
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='{domain.title()} Research Agent',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+    {domain.lower()}-research-agent --config research.json
+    {domain.lower()}-research-agent --heartbeat
+    {domain.lower()}-research-agent --query "latest {domain} developments"
+        """
+    )
+    
+    parser.add_argument('--config', help='Configuration file path')
+    parser.add_argument('--heartbeat', action='store_true', 
+                       help='Run single heartbeat cycle')
+    parser.add_argument('--query', help='Run immediate research query')
+    parser.add_argument('--init-config', action='store_true',
+                       help='Initialize default configuration')
+    parser.add_argument('--demo', action='store_true',
+                       help='Run demo of agent capabilities')
+    
+    args = parser.parse_args()
+    
+    if args.init_config:
+        agent = {domain.title().replace(' ', '')}ResearchAgent()
+        print(json.dumps(agent.config, indent=2))
+        return
+    
+    if args.demo:
+        print(f"🤖 {{domain.title()}} Research Agent Demo")
+        print("="*50)
+        
+        agent = {domain.title().replace(' ', '')}ResearchAgent()
+        
+        # Demo research cycle
+        topic = f"latest {domain} developments"
+        result = agent.run_query(topic)
+        
+        if result:
+            print("\\n✅ Demo completed successfully")
+        else:
+            print("\\n⚠️ Demo completed with limited results")
+        return
+    
+    # Initialize agent
+    agent = {domain.title().replace(' ', '')}ResearchAgent(args.config)
+    
+    if args.heartbeat:
+        agent.run_heartbeat()
+    elif args.query:
+        agent.run_query(args.query)
+    else:
+        parser.print_help()
+
+
+if __name__ == '__main__':
+    main()
+'''
+    
+    return template
+
+
+def create_default_config(domain="general"):
+    """Create default research agent configuration."""
+    config = {
+        "domain": domain,
+        "agent_name": f"{domain.title()} Research Agent",
+        "version": "1.0",
+        "heartbeat_interval": 32,
+        "max_outputs_per_day": 5,
+        "quality_threshold": 6.0,
+        "research_topics": [
+            f"latest developments in {domain}",
+            f"{domain} competitive intelligence",
+            f"{domain} regulatory changes",
+            f"{domain} market trends",
+            f"{domain} technological innovations"
+        ],
+        "output_formats": ["executive_brief", "detailed_analysis", "competitive_alert"],
+        "search_queries": {
+            "news": [
+                f"{domain} news latest",
+                f"{domain} developments 2026",
+                f"{domain} industry updates"
+            ],
+            "research": [
+                f"{domain} research papers",
+                f"{domain} scientific studies",
+                f"{domain} academic publications"
+            ],
+            "competitive": [
+                f"{domain} market leaders",
+                f"{domain} competition analysis",
+                f"{domain} market share"
+            ]
+        },
+        "scratch_file": "./research_scratch.md",
+        "output_dir": "./outputs"
+    }
+    
+    return config
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='Self-Directed Research Agent Template',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+    research-agent --template biotech > biotech-research-agent.py
+    research-agent --template ai > ai-research-agent.py
+    research-agent --init-config --domain biotech > biotech-config.json
+    research-agent --demo
+
+This framework provides complete, runnable research agents with:
+- Multi-heartbeat research accumulation
+- Quality gates and structured outputs
+- MIT license for open source distribution
+        """
+    )
+    
+    parser.add_argument('--template', 
+                       help='Create agent template for domain (biotech, ai, finance, etc.)')
+    parser.add_argument('--init-config', action='store_true',
+                       help='Initialize default configuration')
+    parser.add_argument('--domain', default='general',
+                       help='Domain for configuration (default: general)')
+    parser.add_argument('--demo', action='store_true',
+                       help='Run demo of template system')
+    
+    args = parser.parse_args()
+    
+    if args.template:
+        domain = args.template
+        template = create_research_agent_template(domain)
+        print(template)
+        print(f"\\n# To use: \\n# 1. Save as {{domain}}-research-agent.py\\n# 2. chmod +x {{domain}}-research-agent.py\\n# 3. ./{{domain}}-research-agent.py --init-config > {{domain}}-config.json\\n# 4. ./{{domain}}-research-agent.py --config {{domain}}-config.json --demo", file=sys.stderr)
+    
+    elif args.init_config:
+        config = create_default_config(args.domain)
+        print(json.dumps(config, indent=2, ensure_ascii=False))
+    
+    elif args.demo:
+        print("🤖 Research Agent Template Demo")
+        print("=" * 50)
+        
+        # Create a demo template
+        demo_template = create_research_agent_template("biotech")
+        
+        print("✅ Template generation successful!")
+        print("📝 Generated complete research agent with:")
+        print("   - Multi-heartbeat research accumulation")
+        print("   - Quality gates and output validation")
+        print("   - Structured output formats")
+        print("   - Scratch file working memory")
+        print("   - MIT license for open source")
+        print("")
+        print("🚀 Ready for deployment to OpenSeneca GitHub!")
+    
+    else:
+        parser.print_help()
+
+
+if __name__ == '__main__':
+    main()

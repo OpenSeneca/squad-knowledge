@@ -1,0 +1,266 @@
+#!/usr/bin/env python3
+"""
+Daily Output Statistics
+
+Analyzes output directory statistics including counts per date/domain,
+flags days with too many outputs (potential duplicates), and identifies
+domain coverage gaps.
+
+Usage:
+    output-stats [--week]
+
+Options:
+    --week    Show statistics for the past week (default: all time)
+"""
+
+import os
+import sys
+import re
+import argparse
+from datetime import datetime, timedelta
+from collections import defaultdict, Counter
+from pathlib import Path
+
+def extract_date_from_filename(filename):
+    """Extract date from filename (YYYY-MM-DD prefix)."""
+    match = re.match(r'^(\d{4}-\d{2}-\d{2})-', filename)
+    if match:
+        return datetime.strptime(match.group(1), "%Y-%m-%d")
+    return None
+
+def extract_domain_from_file(file_path):
+    """Extract domain from file header."""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                if line.startswith("**Domain:"):
+                    return line.split(":")[1].strip()
+    except Exception:
+        pass
+    return "Unknown"
+
+def get_file_statistics(week_only=False):
+    """Collect statistics about output files."""
+    outputs_dir = Path.home() / ".openclaw" / "workspace" / "outputs"
+    
+    if not outputs_dir.exists():
+        print(f"Outputs directory not found: {outputs_dir}")
+        return {}
+    
+    cutoff_date = datetime.now() - timedelta(days=7) if week_only else None
+    
+    stats = {
+        'total_files': 0,
+        'dates': defaultdict(int),
+        'domains': defaultdict(int),
+        'date_domains': defaultdict(lambda: defaultdict(int)),
+        'recent_files': []
+    }
+    
+    for file_path in outputs_dir.glob("*.md"):
+        # Skip blog drafts and digests
+        if any(prefix in file_path.name for prefix in ["blog-draft", "weekly-digest", "format-checker"]):
+            continue
+            
+        file_date = extract_date_from_filename(file_path.name)
+        
+        # Filter by date if week_only is True
+        if week_only and file_date and file_date < cutoff_date:
+            continue
+            
+        if file_date:
+            date_str = file_date.strftime("%Y-%m-%d")
+            stats['dates'][date_str] += 1
+            stats['total_files'] += 1
+            
+            # Extract domain
+            domain = extract_domain_from_file(file_path)
+            stats['domains'][domain] += 1
+            stats['date_domains'][date_str][domain] += 1
+            
+            # Track recent files
+            if week_only:
+                stats['recent_files'].append({
+                    'path': str(file_path),
+                    'date': date_str,
+                    'domain': domain,
+                    'filename': file_path.name
+                })
+    
+    return stats
+
+def analyze_quality_issues(stats):
+    """Identify potential quality issues."""
+    issues = []
+    
+    # Check for days with too many outputs (>10)
+    for date, count in sorted(stats['dates'].items()):
+        if count > 10:
+            issues.append({
+                'type': 'high_output',
+                'date': date,
+                'count': count,
+                'severity': 'high' if count > 20 else 'medium'
+            })
+    
+    # Check for days with very few outputs (<2) in recent data
+    recent_dates = [d for d in sorted(stats['dates'].keys()) 
+                   if (datetime.now() - datetime.strptime(d, "%Y-%m-%d")).days <= 7]
+    
+    for date in recent_dates:
+        count = stats['dates'].get(date, 0)
+        if count < 2:
+            issues.append({
+                'type': 'low_output',
+                'date': date,
+                'count': count,
+                'severity': 'low'
+            })
+    
+    # Check for domain imbalance
+    if stats['domains']:
+        total_domains = len(stats['domains'])
+        domain_counts = sorted(stats['domains'].values(), reverse=True)
+        if domain_counts and len(domain_counts) > 1:
+            max_count = domain_counts[0]
+            min_count = domain_counts[-1] if domain_counts[-1] != "Unknown" else 0
+            if max_count > min_count * 5:  # More than 5x difference
+                issues.append({
+                    'type': 'domain_imbalance',
+                    'max_domain': max(stats['domains'], key=stats['domains'].get),
+                    'max_count': max_count,
+                    'min_count': min_count,
+                    'severity': 'medium'
+                })
+    
+    return issues
+
+def generate_report(stats, week_only=False):
+    """Generate a comprehensive statistics report."""
+    report_lines = []
+    
+    period = "Past 7 Days" if week_only else "All Time"
+    report_lines.append(f"# Output Statistics Report")
+    report_lines.append(f"**Period**: {period}")
+    report_lines.append(f"**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    report_lines.append("")
+    
+    # Summary
+    report_lines.append("## Summary")
+    report_lines.append(f"- **Total Files**: {stats['total_files']}")
+    report_lines.append(f"- **Unique Dates**: {len(stats['dates'])}")
+    report_lines.append(f"- **Unique Domains**: {len(stats['domains'])}")
+    report_lines.append("")
+    
+    if stats['dates']:
+        # Daily breakdown
+        report_lines.append("## Daily Output Count")
+        for date in sorted(stats['dates'].keys()):
+            count = stats['dates'][date]
+            report_lines.append(f"- **{date}**: {count} files")
+        report_lines.append("")
+    
+    if stats['domains']:
+        # Domain breakdown
+        report_lines.append("## Domain Distribution")
+        sorted_domains = sorted(stats['domains'].items(), key=lambda x: x[1], reverse=True)
+        for domain, count in sorted_domains:
+            report_lines.append(f"- **{domain}**: {count} files")
+        report_lines.append("")
+    
+    # Quality issues
+    issues = analyze_quality_issues(stats)
+    if issues:
+        report_lines.append("## Quality Analysis")
+        
+        high_output_issues = [i for i in issues if i['type'] == 'high_output']
+        low_output_issues = [i for i in issues if i['type'] == 'low_output']
+        domain_issues = [i for i in issues if i['type'] == 'domain_imbalance']
+        
+        if high_output_issues:
+            report_lines.append("### High Output Days (Potential Duplicates)")
+            for issue in high_output_issues:
+                emoji = "🔴" if issue['severity'] == 'high' else "🟡"
+                report_lines.append(f"{emoji} **{issue['date']}**: {issue['count']} files")
+                report_lines.append(f"   Recommend running `dedup-check --date {issue['date']}`")
+            report_lines.append("")
+        
+        if low_output_issues:
+            report_lines.append("### Low Output Days")
+            for issue in low_output_issues:
+                report_lines.append(f"🟡 **{issue['date']}**: {issue['count']} files")
+            report_lines.append("")
+        
+        if domain_issues:
+            for issue in domain_issues:
+                report_lines.append("### Domain Coverage Imbalance")
+                report_lines.append(f"🟡 **Most Active**: {issue['max_domain']} ({issue['max_count']} files)")
+                report_lines.append(f"🟡 **Least Active**: {issue['min_count']} files")
+                report_lines.append("")
+    else:
+        report_lines.append("## Quality Analysis")
+        report_lines.append("✅ No significant quality issues detected.")
+        report_lines.append("")
+    
+    # Recent activity details (week only)
+    if week_only and stats['recent_files']:
+        report_lines.append("## Recent File Details")
+        for file_info in stats['recent_files'][:20]:  # Limit to 20 most recent
+            report_lines.append(f"- **{file_info['date']}**: {file_info['filename']}")
+            report_lines.append(f"  Domain: {file_info['domain']}")
+        if len(stats['recent_files']) > 20:
+            report_lines.append(f"... and {len(stats['recent_files']) - 20} more files")
+        report_lines.append("")
+    
+    # Recommendations
+    report_lines.append("## Recommendations")
+    
+    if any(i['type'] == 'high_output' for i in issues):
+        report_lines.append("- Run `dedup-check` on high-output days to identify duplicates")
+    
+    if any(i['type'] == 'low_output' for i in issues):
+        report_lines.append("- Consider increasing research output for low-activity days")
+    
+    if any(i['type'] == 'domain_imbalance' for i in issues):
+        report_lines.append("- Review domain coverage to ensure balanced research focus")
+    
+    report_lines.append("- Use `blog-draft` to synthesize related outputs into blog posts")
+    report_lines.append("- Use `weekly-digest` to create executive summaries")
+    
+    return '\n'.join(report_lines)
+
+def main():
+    parser = argparse.ArgumentParser(description="Analyze output directory statistics")
+    parser.add_argument("--week", action="store_true", 
+                       help="Show statistics for the past week only")
+    args = parser.parse_args()
+    
+    print(f"Gathering output statistics{' for the past week' if args.week else ''}...")
+    
+    # Collect statistics
+    stats = get_file_statistics(args.week)
+    
+    if stats['total_files'] == 0:
+        print("No output files found to analyze")
+        sys.exit(1)
+    
+    # Generate and display report
+    report = generate_report(stats, args.week)
+    print(report)
+    
+    # Optionally save report
+    if args.week:
+        outputs_dir = Path.home() / ".openclaw" / "workspace" / "outputs"
+        date_str = datetime.now().strftime("%Y-%m-%d")
+        filename = f"output-stats-week-{date_str}.md"
+        output_path = outputs_dir / filename
+        
+        try:
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write(report)
+            print(f"\nReport saved: {output_path}")
+        except Exception as e:
+            print(f"Warning: Could not save report: {e}")
+
+if __name__ == "__main__":
+    main()

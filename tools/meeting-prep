@@ -1,0 +1,271 @@
+#!/usr/bin/env python3
+"""
+Meeting Pre-Read Brief Generator
+
+Generates 1-page pre-read briefs for meetings based on recent squad research outputs.
+Searches outputs directory for relevant content from the past N days and produces
+structured briefs with context, findings, and talking points.
+
+Usage:
+    meeting-prep "AI strategy review" [--days 7]
+    meeting-prep "competitive analysis" --days 14
+
+Output: Structured brief with key context, recent findings, and talking points
+"""
+
+import argparse
+import json
+import os
+import re
+import sys
+from datetime import datetime, timedelta
+from pathlib import Path
+
+
+def load_outputs_data(outputs_dir, days_back=7):
+    """Load and parse recent output files from the outputs directory."""
+    cutoff_date = datetime.now() - timedelta(days=days_back)
+    outputs = []
+    
+    if not os.path.exists(outputs_dir):
+        return outputs
+    
+    for filename in os.listdir(outputs_dir):
+        if not filename.endswith('.md'):
+            continue
+            
+        filepath = os.path.join(outputs_dir, filename)
+        
+        # Extract date from filename (assuming YYYY-MM-DD format)
+        date_match = re.match(r'(\d{4}-\d{2}-\d{2})', filename)
+        if not date_match:
+            continue
+            
+        file_date = datetime.strptime(date_match.group(1), '%Y-%m-%d')
+        if file_date < cutoff_date:
+            continue
+            
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                content = f.read()
+                
+            # Extract key information
+            title = extract_title(content)
+            key_findings = extract_key_findings(content)
+            sources = extract_sources(content)
+            
+            outputs.append({
+                'filename': filename,
+                'date': file_date.strftime('%Y-%m-%d'),
+                'title': title,
+                'key_findings': key_findings,
+                'sources': sources,
+                'content': content
+            })
+        except Exception as e:
+            print(f"Warning: Could not process {filename}: {e}", file=sys.stderr)
+    
+    return outputs
+
+
+def extract_title(content):
+    """Extract title from markdown content."""
+    lines = content.split('\n')
+    for line in lines:
+        line = line.strip()
+        if line.startswith('# '):
+            return line[2:].strip()
+        elif line and not line.startswith('#') and not line.startswith('```'):
+            return line
+    return "Untitled"
+
+
+def extract_key_findings(content):
+    """Extract key findings from markdown content."""
+    findings = []
+    lines = content.split('\n')
+    
+    for line in lines:
+        line = line.strip()
+        # Look for bullet points with substantial content
+        if line.startswith('- ') or line.startswith('* '):
+            finding = line[2:].strip()
+            if len(finding) > 20 and not finding.lower().startswith('source'):
+                findings.append(finding)
+        # Look for numbered findings
+        elif re.match(r'^\d+\.\s', line):
+            finding = re.sub(r'^\d+\.\s', '', line).strip()
+            if len(finding) > 20:
+                findings.append(finding)
+    
+    return findings[:10]  # Limit to top 10 findings
+
+
+def extract_sources(content):
+    """Extract source URLs from content."""
+    urls = []
+    url_pattern = r'https?://[^\s\)]+(?=\)|\s|$)'
+    matches = re.findall(url_pattern, content)
+    
+    for url in matches:
+        if url not in urls:
+            urls.append(url)
+    
+    return urls[:20]  # Limit to top 20 sources
+
+
+def search_relevance(topic, outputs):
+    """Score outputs based on relevance to the meeting topic."""
+    topic_words = topic.lower().split()
+    scored_outputs = []
+    
+    for output in outputs:
+        score = 0
+        text_to_search = (output['title'] + ' ' + ' '.join(output['key_findings'])).lower()
+        
+        for word in topic_words:
+            if word in text_to_search:
+                score += text_to_search.count(word)
+        
+        if score > 0:
+            scored_outputs.append((score, output))
+    
+    # Sort by relevance score (descending)
+    scored_outputs.sort(key=lambda x: x[0], reverse=True)
+    return [output for _, output in scored_outputs]
+
+
+def generate_brief(topic, relevant_outputs, days_back):
+    """Generate a structured meeting brief."""
+    brief = []
+    brief.append(f"# Meeting Pre-Read Brief")
+    brief.append(f"**Topic:** {topic}")
+    brief.append(f"**Date:** {datetime.now().strftime('%Y-%m-%d')}")
+    brief.append(f"**Research Period:** Past {days_back} days")
+    brief.append("")
+    
+    # Executive Summary
+    brief.append("## Executive Summary")
+    if relevant_outputs:
+        brief.append(f"Found {len(relevant_outputs)} relevant research outputs from the squad.")
+        brief.append("Key themes identified across recent research.")
+    else:
+        brief.append("No directly relevant research found in the specified time period.")
+    brief.append("")
+    
+    # Key Context
+    brief.append("## Key Context")
+    if relevant_outputs:
+        # Extract unique themes
+        all_findings = []
+        for output in relevant_outputs[:5]:  # Top 5 most relevant
+            all_findings.extend(output['key_findings'][:3])  # Top 3 findings per output
+        
+        # Deduplicate and format
+        unique_findings = []
+        for finding in all_findings:
+            if finding not in unique_findings and len(unique_findings) < 7:
+                unique_findings.append(finding)
+        
+        for finding in unique_findings:
+            brief.append(f"- {finding}")
+    else:
+        brief.append("- Consider reviewing broader research themes")
+        brief.append("- May need to expand search parameters")
+    brief.append("")
+    
+    # Recent Squad Findings
+    brief.append("## Recent Squad Findings")
+    if relevant_outputs:
+        for i, output in enumerate(relevant_outputs[:3], 1):  # Top 3 outputs
+            brief.append(f"### {i}. {output['title']}")
+            brief.append(f"**Date:** {output['date']}")
+            brief.append("**Key Points:**")
+            for finding in output['key_findings'][:3]:
+                brief.append(f"- {finding}")
+            brief.append("")
+    else:
+        brief.append("No directly applicable findings in recent research.")
+    brief.append("")
+    
+    # Talking Points
+    brief.append("## Talking Points")
+    if relevant_outputs:
+        brief.append("Based on recent squad research:")
+        brief.append("")
+        brief.append("1. **Strategic Implications**")
+        brief.append("   - What do these findings mean for our strategy?")
+        brief.append("   - How should we adjust our approach based on this data?")
+        brief.append("")
+        brief.append("2. **Competitive Position**")
+        brief.append("   - How do these insights affect our competitive stance?")
+        brief.append("   - Where are the opportunities/d threats?")
+        brief.append("")
+        brief.append("3. **Action Items**")
+        brief.append("   - What immediate actions should we consider?")
+        brief.append("   - What further research is needed?")
+    else:
+        brief.append("1. Review recent squad research outputs for relevant context")
+        brief.append("2. Consider expanding scope to related topics")
+        brief.append("3. Identify gaps in current research coverage")
+    brief.append("")
+    
+    # Sources
+    brief.append("## Sources Consulted")
+    if relevant_outputs:
+        for output in relevant_outputs[:5]:
+            brief.append(f"- {output['title']} ({output['date']})")
+            for source in output['sources'][:2]:  # Top 2 sources per output
+                brief.append(f"  - {source}")
+    else:
+        brief.append("- No relevant sources found in specified time period")
+    
+    return '\n'.join(brief)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='Generate meeting pre-read brief from squad research outputs',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+    meeting-prep "AI strategy review"
+    meeting-prep "competitive analysis" --days 14
+    meeting-prep "product development" --days 30
+        """
+    )
+    
+    parser.add_argument('topic', 
+                       help='Meeting topic or agenda item')
+    parser.add_argument('--days', 
+                       type=int, 
+                       default=7,
+                       help='Number of days to look back for research (default: 7)')
+    parser.add_argument('--outputs-dir',
+                       default='~/.openclaw/workspace/outputs',
+                       help='Path to outputs directory (default: ~/.openclaw/workspace/outputs)')
+    
+    args = parser.parse_args()
+    
+    # Expand home directory
+    outputs_dir = os.path.expanduser(args.outputs_dir)
+    
+    # Load recent outputs
+    outputs = load_outputs_data(outputs_dir, args.days)
+    
+    if not outputs:
+        print(f"No outputs found in the past {args.days} days.", file=sys.stderr)
+        sys.exit(1)
+    
+    # Find relevant outputs
+    relevant_outputs = search_relevance(args.topic, outputs)
+    
+    # Generate brief
+    brief = generate_brief(args.topic, relevant_outputs, args.days)
+    
+    # Output the brief
+    print(brief)
+
+
+if __name__ == '__main__':
+    main()

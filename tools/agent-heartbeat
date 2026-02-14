@@ -1,0 +1,641 @@
+#!/usr/bin/env python3
+"""
+Generic Heartbeat Framework
+
+Extracts the heartbeat pattern from our squad into a reusable framework.
+Configurable: interval, decision tree, output format, quality checks.
+Can be used by anyone building autonomous agents.
+
+Usage:
+    agent-heartbeat --config heartbeat.json
+    agent-heartbeat --init-config > my-heartbeat.json
+    agent-heartbeat --check-dir /path/to/tasks --check-urls --check-calendar
+
+Features:
+- Configurable heartbeat intervals and decision trees
+- Multiple check types (tasks, URLs, calendar, notifications)
+- Pluggable output formats and quality gates
+- MIT license and comprehensive documentation
+"""
+
+import argparse
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+from datetime import datetime, timedelta
+from pathlib import Path
+
+
+def create_default_config():
+    """Create a default heartbeat configuration."""
+    config = {
+        "metadata": {
+            "version": "1.0",
+            "created": datetime.now().isoformat(),
+            "description": "Generic Agent Heartbeat Configuration"
+        },
+        "heartbeat": {
+            "interval_minutes": 32,
+            "enabled_checks": ["tasks", "quality", "schedule"],
+            "output_format": "plain",
+            "quiet_hours": {
+                "enabled": True,
+                "start": "23:00",
+                "end": "08:00"
+            }
+        },
+        "checks": {
+            "tasks": {
+                "enabled": True,
+                "directories": ["./tasks/incoming", "./tasks/priority"],
+                "file_patterns": ["*.md", "*.txt", "*.json"],
+                "action": "process_tasks"
+            },
+            "quality": {
+                "enabled": True,
+                "directory": "./outputs",
+                "min_quality_score": 6.0,
+                "recent_days": 7,
+                "action": "quality_gate"
+            },
+            "schedule": {
+                "enabled": True,
+                "calendar_file": "./calendar.json",
+                "lookahead_hours": 24,
+                "action": "check_calendar"
+            },
+            "urls": {
+                "enabled": False,
+                "monitor_list": [
+                    "https://example.com/api/status",
+                    "https://another-service.com/health"
+                ],
+                "timeout_seconds": 10,
+                "action": "check_urls"
+            },
+            "notifications": {
+                "enabled": False,
+                "sources": ["email", "social"],
+                "keywords": ["urgent", "important", "asap"],
+                "action": "check_notifications"
+            }
+        },
+        "actions": {
+            "process_tasks": {
+                "description": "Process incoming task files",
+                "method": "execute_command",
+                "command": "python process_tasks.py",
+                "timeout_seconds": 300
+            },
+            "quality_gate": {
+                "description": "Check output quality metrics",
+                "method": "run_quality_check",
+                "min_score": 6.0,
+                "fail_action": "log_issue"
+            },
+            "check_calendar": {
+                "description": "Check upcoming calendar events",
+                "method": "check_calendar_events",
+                "lookahead_hours": 24
+            },
+            "check_urls": {
+                "description": "Monitor service health",
+                "method": "http_check",
+                "expected_status": 200
+            },
+            "check_notifications": {
+                "description": "Check for urgent notifications",
+                "method": "scan_notifications",
+                "alert_threshold": 1
+            }
+        },
+        "outputs": {
+            "plain": {
+                "ok_message": "HEARTBEAT_OK",
+                "error_prefix": "ALERT: "
+            },
+            "json": {
+                "include_timestamp": True,
+                "include_details": True,
+                "pretty_print": True
+            },
+            "structured": {
+                "format": "markdown",
+                "include_sections": True,
+                "timestamp_format": "iso"
+            }
+        },
+        "logging": {
+            "enabled": True,
+            "log_file": "./heartbeat.log",
+            "log_level": "INFO",
+            "rotate_size_mb": 10
+        }
+    }
+    
+    return config
+
+
+def init_config():
+    """Initialize and output default configuration."""
+    config = create_default_config()
+    print(json.dumps(config, indent=2, ensure_ascii=False))
+
+
+def load_config(config_file):
+    """Load configuration from file."""
+    if not os.path.exists(config_file):
+        print(f"Error: Config file {config_file} does not exist", file=sys.stderr)
+        print("Use --init-config to create a default configuration", file=sys.stderr)
+        sys.exit(1)
+    
+    try:
+        with open(config_file, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError) as e:
+        print(f"Error loading config: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+def check_tasks(config, check_config):
+    """Check for incoming tasks in specified directories."""
+    if not check_config["enabled"]:
+        return None, "disabled"
+    
+    found_tasks = []
+    
+    for directory in check_config["directories"]:
+        if not os.path.exists(directory):
+            continue
+        
+        for pattern in check_config["file_patterns"]:
+            import glob
+            pattern_path = os.path.join(directory, pattern)
+            found_tasks.extend(glob.glob(pattern_path))
+    
+    if found_tasks:
+        return {
+            "status": "found",
+            "count": len(found_tasks),
+            "tasks": found_tasks[:5],  # Limit to first 5
+            "action_required": True
+        }, f"found {len(found_tasks)} tasks"
+    else:
+        return {
+            "status": "none",
+            "count": 0,
+            "action_required": False
+        }, "no tasks found"
+
+
+def check_quality(config, check_config):
+    """Check output quality using quality-scorer tool."""
+    if not check_config["enabled"]:
+        return None, "disabled"
+    
+    quality_tool = os.path.expanduser("~/.openclaw/workspace/tools/quality-scorer")
+    if not os.path.exists(quality_tool):
+        return {"status": "tool_missing", "error": "quality-scorer not found"}, "tool missing"
+    
+    try:
+        # Run quality scorer on recent outputs
+        result = subprocess.run(
+            [quality_tool, "--directory", check_config["directory"], "--quiet"],
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        
+        if result.returncode == 0:
+            # Parse output to get scores
+            scores = []
+            for line in result.stdout.strip().split('\n'):
+                if '/10' in line:
+                    try:
+                        score = float(line.split(':')[-1].strip().split('/')[0])
+                        scores.append(score)
+                    except (ValueError, IndexError):
+                        continue
+            
+            if scores:
+                avg_score = sum(scores) / len(scores)
+                min_score = min(scores)
+                
+                quality_check = {
+                    "status": "checked",
+                    "outputs_analyzed": len(scores),
+                    "average_score": round(avg_score, 1),
+                    "minimum_score": min_score,
+                    "meets_threshold": avg_score >= check_config["min_quality_score"],
+                    "action_required": avg_score < check_config["min_quality_score"]
+                }
+                
+                return quality_check, f"avg score {avg_score:.1f}/10"
+            else:
+                return {"status": "no_outputs", "action_required": False}, "no outputs found"
+        else:
+            return {"status": "error", "error": result.stderr.strip()}, "error running check"
+    
+    except subprocess.TimeoutExpired:
+        return {"status": "timeout", "error": "quality check timed out"}, "timeout"
+    except Exception as e:
+        return {"status": "error", "error": str(e)}, "error"
+
+
+def check_schedule(config, check_config):
+    """Check for upcoming calendar events."""
+    if not check_config["enabled"]:
+        return None, "disabled"
+    
+    calendar_file = check_config["calendar_file"]
+    if not os.path.exists(calendar_file):
+        return {"status": "no_calendar", "action_required": False}, "no calendar file"
+    
+    try:
+        with open(calendar_file, 'r', encoding='utf-8') as f:
+            calendar_data = json.load(f)
+        
+        upcoming_events = []
+        now = datetime.now()
+        cutoff = now + timedelta(hours=check_config["lookahead_hours"])
+        
+        for event in calendar_data.get("events", []):
+            event_time = datetime.fromisoformat(event["datetime"])
+            if now <= event_time <= cutoff:
+                upcoming_events.append(event)
+        
+        if upcoming_events:
+            return {
+                "status": "found_events",
+                "count": len(upcoming_events),
+                "next_event": upcoming_events[0],
+                "action_required": True
+            }, f"{len(upcoming_events)} events upcoming"
+        else:
+            return {
+                "status": "no_upcoming",
+                "action_required": False
+            }, "no upcoming events"
+    
+    except (json.JSONDecodeError, IOError, KeyError) as e:
+        return {"status": "error", "error": str(e)}, "calendar error"
+
+
+def check_urls(config, check_config):
+    """Check health of monitored URLs."""
+    if not check_config["enabled"]:
+        return None, "disabled"
+    
+    results = []
+    failed_urls = []
+    
+    for url in check_config["monitor_list"]:
+        try:
+            import urllib.request
+            import urllib.error
+            
+            request = urllib.request.Request(url)
+            with urllib.request.urlopen(request, timeout=check_config["timeout_seconds"]) as response:
+                status = response.getcode()
+                
+                results.append({
+                    "url": url,
+                    "status": "ok",
+                    "response_code": status
+                })
+        
+        except urllib.error.HTTPError as e:
+            results.append({
+                "url": url,
+                "status": "http_error",
+                "response_code": e.code,
+                "error": str(e)
+            })
+            failed_urls.append(url)
+        
+        except Exception as e:
+            results.append({
+                "url": url,
+                "status": "error",
+                "error": str(e)
+            })
+            failed_urls.append(url)
+    
+    url_check = {
+        "status": "checked",
+        "total_urls": len(results),
+        "failed_urls": len(failed_urls),
+        "results": results,
+        "action_required": len(failed_urls) > 0
+    }
+    
+    return url_check, f"{len(failed_urls)}/{len(results)} failed" if failed_urls else "all ok"
+
+
+def execute_action(config, action_name, check_result):
+    """Execute the specified action for a check result."""
+    if action_name not in config["actions"]:
+        return {"status": "no_action", "message": f"Action {action_name} not found"}
+    
+    action_config = config["actions"][action_name]
+    method = action_config.get("method", "none")
+    
+    if method == "execute_command":
+        try:
+            command = action_config["command"]
+            timeout = action_config.get("timeout_seconds", 60)
+            
+            result = subprocess.run(
+                command.split(),
+                capture_output=True,
+                text=True,
+                timeout=timeout
+            )
+            
+            return {
+                "status": "executed",
+                "command": command,
+                "return_code": result.returncode,
+                "stdout": result.stdout[:500],  # Limit output
+                "stderr": result.stderr[:200]
+            }
+        
+        except subprocess.TimeoutExpired:
+            return {"status": "timeout", "command": command}
+        except Exception as e:
+            return {"status": "error", "command": command, "error": str(e)}
+    
+    elif method == "log_issue":
+        # Log quality issues
+        log_entry = {
+            "timestamp": datetime.now().isoformat(),
+            "type": "quality_issue",
+            "details": check_result
+        }
+        return {"status": "logged", "entry": log_entry}
+    
+    elif method == "none":
+        return {"status": "no_action", "message": "No action configured"}
+    
+    else:
+        return {"status": "unknown_method", "method": method}
+
+
+def format_output(config, results, overall_status):
+    """Format heartbeat output according to configuration."""
+    output_format = config["heartbeat"]["output_format"]
+    
+    if output_format == "plain":
+        return format_plain_output(config, results, overall_status)
+    elif output_format == "json":
+        return format_json_output(config, results, overall_status)
+    elif output_format == "structured":
+        return format_structured_output(config, results, overall_status)
+    else:
+        return format_plain_output(config, results, overall_status)
+
+
+def format_plain_output(config, results, overall_status):
+    """Format output as plain text."""
+    if overall_status == "ok":
+        return config["outputs"]["plain"]["ok_message"]
+    
+    lines = []
+    prefix = config["outputs"]["plain"]["error_prefix"]
+    
+    lines.append(prefix + "Heartbeat issues detected:")
+    
+    for check_name, result in results.items():
+        if result and result.get("action_required", False):
+            status = result.get("status", "unknown")
+            if status == "found":
+                lines.append(f"- {check_name}: {result.get('count', 0)} items found")
+            elif status == "found_events":
+                lines.append(f"- {check_name}: {result.get('count', 0)} upcoming events")
+            elif status == "checked":
+                if result.get("failed_urls", 0) > 0:
+                    lines.append(f"- {check_name}: {result.get('failed_urls', 0)} URLs failed")
+                elif result.get("minimum_score", 10) < config["checks"]["quality"]["min_quality_score"]:
+                    lines.append(f"- {check_name}: Quality score {result.get('minimum_score', 0)}/{10} below threshold")
+            else:
+                lines.append(f"- {check_name}: {status}")
+    
+    return '\n'.join(lines)
+
+
+def format_json_output(config, results, overall_status):
+    """Format output as JSON."""
+    output_data = {
+        "timestamp": datetime.now().isoformat(),
+        "overall_status": overall_status,
+        "heartbeat_version": config["metadata"]["version"],
+        "results": results
+    }
+    
+    if config["outputs"]["json"]["pretty_print"]:
+        return json.dumps(output_data, indent=2, ensure_ascii=False)
+    else:
+        return json.dumps(output_data, ensure_ascii=False)
+
+
+def format_structured_output(config, results, overall_status):
+    """Format output as structured markdown."""
+    lines = []
+    
+    lines.append("# Heartbeat Report")
+    lines.append(f"**Time:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    lines.append(f"**Status:** {overall_status.upper()}")
+    lines.append("")
+    
+    if overall_status == "ok":
+        lines.append("All checks passed. System operating normally.")
+        return '\n'.join(lines)
+    
+    lines.append("## Issues Detected")
+    lines.append("")
+    
+    for check_name, result in results.items():
+        if result and result.get("action_required", False):
+            lines.append(f"### {check_name}")
+            status = result.get("status", "unknown")
+            
+            if status == "found":
+                lines.append(f"- **Status:** {result.get('count', 0)} tasks found")
+                if result.get("tasks"):
+                    lines.append("- **Tasks:**")
+                    for task in result["tasks"][:3]:
+                        lines.append(f"  - {os.path.basename(task)}")
+            elif status == "found_events":
+                lines.append(f"- **Status:** {result.get('count', 0)} upcoming events")
+                if result.get("next_event"):
+                    next_event = result["next_event"]
+                    lines.append(f"- **Next:** {next_event.get('title', 'Unknown')} ({next_event.get('datetime', 'Unknown time')})")
+            elif status == "checked":
+                if result.get("failed_urls", 0) > 0:
+                    lines.append(f"- **Status:** {result.get('failed_urls', 0)} URLs failed")
+                else:
+                    avg_score = result.get("average_score", 0)
+                    min_score = result.get("minimum_score", 0)
+                    lines.append(f"- **Status:** Quality issue (avg: {avg_score}/10, min: {min_score}/10)")
+            else:
+                lines.append(f"- **Status:** {status}")
+            
+            lines.append("")
+    
+    return '\n'.join(lines)
+
+
+def is_quiet_hours(config):
+    """Check if current time is within quiet hours."""
+    quiet_config = config["heartbeat"]["quiet_hours"]
+    if not quiet_config["enabled"]:
+        return False
+    
+    now = datetime.now().time()
+    start_time = datetime.strptime(quiet_config["start"], "%H:%M").time()
+    end_time = datetime.strptime(quiet_config["end"], "%H:%M").time()
+    
+    if start_time <= end_time:
+        return start_time <= now <= end_time
+    else:
+        # Quiet hours span midnight
+        return now >= start_time or now <= end_time
+
+
+def run_heartbeat(config):
+    """Run the main heartbeat process."""
+    results = {}
+    overall_status = "ok"
+    
+    # Run enabled checks
+    enabled_checks = config["heartbeat"]["enabled_checks"]
+    
+    for check_name in enabled_checks:
+        if check_name not in config["checks"]:
+            continue
+        
+        check_config = config["checks"][check_name]
+        
+        # Run the check
+        if check_name == "tasks":
+            result, status = check_tasks(config, check_config)
+        elif check_name == "quality":
+            result, status = check_quality(config, check_config)
+        elif check_name == "schedule":
+            result, status = check_schedule(config, check_config)
+        elif check_name == "urls":
+            result, status = check_urls(config, check_config)
+        else:
+            result, status = None, "unknown"
+        
+        results[check_name] = result
+        
+        # Execute action if needed
+        if result and result.get("action_required", False):
+            action_name = check_config.get("action", "none")
+            action_result = execute_action(config, action_name, result)
+            if "action_result" in result:
+                result["action_result"] = action_result
+        
+        # Update overall status
+        if result and result.get("action_required", False):
+            overall_status = "alert"
+    
+    return results, overall_status
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='Generic Agent Heartbeat Framework',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+    agent-heartbeat --config heartbeat.json
+    agent-heartbeat --init-config > my-heartbeat.json
+    agent-heartbeat --check-dir /path/to/tasks --check-urls --check-calendar
+
+This framework provides a configurable heartbeat system for autonomous agents.
+Supports multiple check types, actions, and output formats.
+MIT License - suitable for open source distribution.
+        """
+    )
+    
+    parser.add_argument('--config', help='Configuration file path')
+    parser.add_argument('--init-config', action='store_true', 
+                       help='Initialize and output default configuration')
+    parser.add_argument('--check-dir', help='Check tasks in specific directory')
+    parser.add_argument('--check-urls', action='store_true', 
+                       help='Check URL health')
+    parser.add_argument('--check-calendar', action='store_true', 
+                       help='Check calendar events')
+    parser.add_argument('--output-format', choices=['plain', 'json', 'structured'],
+                       help='Override output format')
+    parser.add_argument('--interval', type=int, 
+                       help='Heartbeat interval in minutes')
+    
+    args = parser.parse_args()
+    
+    # Initialize config
+    if args.init_config:
+        init_config()
+        return
+    
+    # Load config
+    config_file = args.config or "heartbeat.json"
+    config = load_config(config_file)
+    
+    # Override config with command line arguments
+    if args.output_format:
+        config["heartbeat"]["output_format"] = args.output_format
+    if args.interval:
+        config["heartbeat"]["interval_minutes"] = args.interval
+    
+    # Quick mode for specific checks
+    if args.check_dir or args.check_urls or args.check_calendar:
+        # Override enabled checks
+        enabled = []
+        if args.check_dir:
+            enabled.append("tasks")
+            config["checks"]["tasks"]["directories"] = [args.check_dir]
+        if args.check_urls:
+            enabled.append("urls")
+        if args.check_calendar:
+            enabled.append("schedule")
+        config["heartbeat"]["enabled_checks"] = enabled
+    
+    # Check quiet hours
+    if is_quiet_hours(config):
+        print(config["outputs"]["plain"]["ok_message"])
+        return
+    
+    # Run heartbeat
+    results, overall_status = run_heartbeat(config)
+    
+    # Format and output
+    output = format_output(config, results, overall_status)
+    print(output)
+    
+    # Log if enabled
+    if config["logging"]["enabled"]:
+        log_file = config["logging"]["log_file"]
+        log_entry = {
+            "timestamp": datetime.now().isoformat(),
+            "status": overall_status,
+            "results": results
+        }
+        
+        try:
+            with open(log_file, 'a', encoding='utf-8') as f:
+                f.write(json.dumps(log_entry) + '\n')
+        except IOError:
+            pass  # Fail silently for logging
+    
+    # Exit with appropriate code
+    sys.exit(0 if overall_status == "ok" else 1)
+
+
+if __name__ == '__main__':
+    main()

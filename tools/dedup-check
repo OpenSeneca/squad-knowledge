@@ -1,0 +1,187 @@
+#!/usr/bin/env python3
+"""
+Output Deduplication Scanner
+
+Scans ~/.openclaw/workspace/outputs/ for files and groups them by topic similarity
+to identify potential duplicates. Uses fuzzy matching on filename patterns.
+
+Usage:
+    dedup-check [--date YYYY-MM-DD] [--merge]
+
+Options:
+    --date DATE    Check files from specific date (default: today)
+    --merge        Merge duplicate content into oldest file, remove newer duplicates
+"""
+
+import os
+import sys
+import re
+import argparse
+from datetime import datetime, timedelta
+from collections import defaultdict
+from pathlib import Path
+
+def normalize_topic(filename):
+    """Extract topic from filename by removing dates and standardizing."""
+    # Remove date prefix (YYYY-MM-DD-)
+    filename = re.sub(r'^\d{4}-\d{2}-\d{2}-', '', filename)
+    # Remove file extension
+    filename = filename.replace('.md', '')
+    # Replace common separators with single dash
+    filename = re.sub(r'[-_\s]+', '-', filename)
+    # Remove common prefixes/suffixes
+    filename = re.sub(r'^(research|analysis|report)-', '', filename)
+    filename = re.sub(r'-(analysis|report|summary)$', '', filename)
+    # Convert to lowercase for matching
+    filename = filename.lower().strip('-')
+    
+    # Further normalization for better grouping
+    # Handle common variations
+    replacements = {
+        'ai-': 'artificial-intelligence-',
+        'ml-': 'machine-learning-',
+        'fda-ema': 'fda-ema',
+        'regulatory-guidance': 'regulatory-guidance',
+        'guidance': 'guidance',
+        'framework': 'framework',
+        'regulation': 'regulation',
+        'compliance': 'compliance',
+    }
+    
+    for old, new in replacements.items():
+        filename = filename.replace(old, new)
+    
+    return filename
+
+def group_files_by_topic(file_paths):
+    """Group files by normalized topic."""
+    groups = defaultdict(list)
+    
+    for file_path in file_paths:
+        filename = os.path.basename(file_path)
+        topic = normalize_topic(filename)
+        groups[topic].append((file_path, filename))
+    
+    return groups
+
+def find_duplicates(groups):
+    """Find groups with multiple files (potential duplicates)."""
+    duplicates = {}
+    
+    for topic, files in groups.items():
+        if len(files) > 1:
+            duplicates[topic] = sorted(files, key=lambda x: x[0])  # Sort by path
+    
+    return duplicates
+
+def merge_duplicate_content(files, oldest_file_path):
+    """Merge content from duplicate files into the oldest file."""
+    merged_content = []
+    
+    # Read content from all files
+    for file_path, filename in files:
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            merged_content.append(f"\n\n--- Content from {filename} ---\n{content}")
+        except Exception as e:
+            print(f"Error reading {file_path}: {e}")
+    
+    # Write merged content to oldest file
+    try:
+        with open(oldest_file_path, 'w', encoding='utf-8') as f:
+            f.write("# Merged Content\n")
+            f.write(f"Original file: {os.path.basename(oldest_file_path)}\n")
+            f.write(f"Merged on: {datetime.now().isoformat()}\n")
+            f.write("".join(merged_content))
+        return True
+    except Exception as e:
+        print(f"Error writing merged content: {e}")
+        return False
+
+def remove_newer_duplicates(files, oldest_file_path):
+    """Remove newer duplicate files."""
+    removed_count = 0
+    
+    for file_path, filename in files:
+        if file_path != oldest_file_path:
+            try:
+                os.remove(file_path)
+                print(f"Removed: {filename}")
+                removed_count += 1
+            except Exception as e:
+                print(f"Error removing {file_path}: {e}")
+    
+    return removed_count
+
+def main():
+    parser = argparse.ArgumentParser(description="Scan for duplicate output files")
+    parser.add_argument("--date", help="Date to check (YYYY-MM-DD format)")
+    parser.add_argument("--merge", action="store_true", help="Merge duplicates and remove newer files")
+    args = parser.parse_args()
+    
+    # Determine target date
+    if args.date:
+        try:
+            target_date = datetime.strptime(args.date, "%Y-%m-%d")
+        except ValueError:
+            print("Error: Invalid date format. Use YYYY-MM-DD")
+            sys.exit(1)
+    else:
+        target_date = datetime.now()
+    
+    date_str = target_date.strftime("%Y-%m-%d")
+    outputs_dir = Path.home() / ".openclaw" / "workspace" / "outputs"
+    
+    if not outputs_dir.exists():
+        print(f"Outputs directory not found: {outputs_dir}")
+        sys.exit(1)
+    
+    # Find files for the target date
+    target_files = []
+    date_prefix = f"{date_str}-"
+    
+    for file_path in outputs_dir.glob(f"{date_prefix}*.md"):
+        target_files.append(str(file_path))
+    
+    if not target_files:
+        print(f"No files found for date: {date_str}")
+        return
+    
+    print(f"Scanning {len(target_files)} files from {date_str}...")
+    
+    # Group files by topic
+    groups = group_files_by_topic(target_files)
+    duplicates = find_duplicates(groups)
+    
+    if not duplicates:
+        print("No duplicates found.")
+        return
+    
+    # Report duplicates
+    print(f"\nFound {len(duplicates)} potential duplicate groups:")
+    
+    total_files_to_merge = 0
+    for topic, files in duplicates.items():
+        print(f"\nTopic: {topic}")
+        for file_path, filename in files:
+            print(f"  - {filename}")
+        total_files_to_merge += len(files) - 1  # Don't count the oldest file
+    
+    if args.merge:
+        print(f"\nMerging duplicates...")
+        files_removed = 0
+        
+        for topic, files in duplicates.items():
+            oldest_file = files[0][0]  # First file is oldest (sorted by path)
+            
+            if merge_duplicate_content(files, oldest_file):
+                removed = remove_newer_duplicates(files, oldest_file)
+                files_removed += removed
+        
+        print(f"\nMerged {len(duplicates)} groups, removed {files_removed} duplicate files.")
+    else:
+        print(f"\nRecommendation: Run with --merge to consolidate {total_files_to_merge} duplicate files.")
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,282 @@
+#!/usr/bin/env python3
+"""
+Weekly Research Digest Compiler
+
+Scans outputs from the past 7 days, groups by domain, picks top findings,
+and outputs a formatted digest suitable for email.
+
+Usage:
+    weekly-digest [--days 7]
+
+Options:
+    --days N    Number of days to look back (default: 7)
+"""
+
+import os
+import sys
+import re
+import argparse
+from datetime import datetime, timedelta
+from collections import defaultdict
+from pathlib import Path
+
+def extract_domain_from_file(file_path):
+    """Extract domain from file header."""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                if line.startswith("**Domain:"):
+                    return line.split(":")[1].strip()
+    except Exception:
+        pass
+    return "Unknown"
+
+def extract_title_from_content(content):
+    """Extract title from markdown content."""
+    lines = content.split('\n')
+    for line in lines:
+        line = line.strip()
+        if line.startswith('# '):
+            return line[2:].strip()
+    return "Untitled"
+
+def extract_key_findings(content):
+    """Extract key findings from research content."""
+    findings = []
+    lines = content.split('\n')
+    
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+            
+        # Look for bullet points that contain insights
+        if (line.startswith('-') or line.startswith('*') or 
+            re.match(r'^\d+\.', line)):
+            clean_line = line.lstrip('-*0123456789. ').strip()
+            if len(clean_line) > 20 and any(keyword in clean_line.lower() 
+                                            for keyword in ['growth', 'trend', 'analysis', 'insight', 'finding', 'development', 'impact']):
+                findings.append(clean_line)
+    
+    return findings
+
+def extract_date_from_filename(filename):
+    """Extract date from filename (YYYY-MM-DD prefix)."""
+    match = re.match(r'^(\d{4}-\d{2}-\d{2})-', filename)
+    if match:
+        return datetime.strptime(match.group(1), "%Y-%m-%d")
+    return None
+
+def group_files_by_domain_and_date(days_back):
+    """Group recent files by domain and date."""
+    outputs_dir = Path.home() / ".openclaw" / "workspace" / "outputs"
+    
+    if not outputs_dir.exists():
+        print(f"Outputs directory not found: {outputs_dir}")
+        return {}
+    
+    cutoff_date = datetime.now() - timedelta(days=days_back)
+    domain_files = defaultdict(list)
+    
+    for file_path in outputs_dir.glob("*.md"):
+        # Skip blog drafts and digests
+        if "blog-draft" in file_path.name or "weekly-digest" in file_path.name:
+            continue
+            
+        file_date = extract_date_from_filename(file_path.name)
+        if file_date and file_date >= cutoff_date:
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                domain = extract_domain_from_file(file_path)
+                title = extract_title_from_content(content)
+                findings = extract_key_findings(content)
+                
+                domain_files[domain].append({
+                    'path': str(file_path),
+                    'filename': file_path.name,
+                    'date': file_date,
+                    'title': title,
+                    'findings': findings,
+                    'content_length': len(content)
+                })
+                
+            except Exception as e:
+                print(f"Warning: Could not process {file_path}: {e}")
+    
+    return domain_files
+
+def score_file_importance(file_data):
+    """Score a file's importance based on multiple factors."""
+    score = 0
+    
+    # More findings = higher score
+    score += len(file_data['findings']) * 10
+    
+    # Longer content (but not too long) = higher score
+    if 1000 <= file_data['content_length'] <= 5000:
+        score += 20
+    elif file_data['content_length'] > 5000:
+        score += 10
+    
+    # Recency (more recent = higher score)
+    days_old = (datetime.now() - file_data['date']).days
+    score += max(0, 10 - days_old)
+    
+    # Domain quality (some domains are more valuable)
+    domain = file_data.get('domain', '').lower()
+    if any(keyword in domain for keyword in ['ai', 'artificial intelligence', 'biopharma', 'fda']):
+        score += 15
+    
+    return score
+
+def select_top_findings(domain_files, top_n=2):
+    """Select top N findings per domain."""
+    top_files = {}
+    
+    for domain, files in domain_files.items():
+        if not files:
+            continue
+            
+        # Score and sort files
+        scored_files = [(f, score_file_importance(f)) for f in files]
+        scored_files.sort(key=lambda x: x[1], reverse=True)
+        
+        # Select top files and extract best findings
+        selected_findings = []
+        for file_data, score in scored_files[:top_n]:
+            if file_data['findings']:
+                selected_findings.extend(file_data['findings'][:2])  # Top 2 findings per file
+        
+        if selected_findings:
+            top_files[domain] = selected_findings[:3]  # Max 3 findings per domain
+    
+    return top_files
+
+def generate_digest_content(top_findings, days_back):
+    """Generate the digest content."""
+    now = datetime.now()
+    start_date = now - timedelta(days=days_back)
+    
+    digest = f"""# Weekly Research Digest
+**Period**: {start_date.strftime("%B %d")} - {now.strftime("%B %d, %Y")}
+**Generated**: {now.strftime("%B %d, %Y at %I:%M %p")}
+
+---
+
+## Executive Summary
+
+This digest highlights the most important research findings from the past {days_back} days across {len(top_findings)} key domains. Our automated analysis identified significant trends and insights that should inform strategic decision-making.
+
+---
+
+## Key Findings by Domain
+
+"""
+    
+    # Add findings for each domain
+    for domain, findings in top_findings.items():
+        digest += f"### {domain}\n\n"
+        
+        for i, finding in enumerate(findings, 1):
+            digest += f"**{i}.** {finding}\n\n"
+    
+    digest += f"""
+---
+
+## Domain Coverage
+
+The research covered the following domains this week:
+
+"""
+    
+    # List all domains with coverage
+    domain_stats = {}
+    for domain, findings in top_findings.items():
+        domain_stats[domain] = len(findings)
+    
+    for domain, count in sorted(domain_stats.items()):
+        digest += f"- **{domain}**: {count} key findings\n"
+    
+    digest += f"""
+
+## Methodology
+
+This digest was generated using automated content analysis of research outputs from the past {days_back} days. The system:
+
+1. **Scanned** all research files for the specified period
+2. **Grouped** findings by domain using file headers
+3. **Scored** content based on insight quality, recency, and comprehensiveness
+4. **Selected** the most impactful findings per domain
+5. **Synthesized** results into this executive summary
+
+## Next Steps
+
+- Review the detailed source files referenced in each finding
+- Consider follow-up research on high-priority domains
+- Update strategic planning based on emerging trends
+- Share relevant insights with appropriate stakeholders
+
+---
+
+*This digest was automatically generated by Archimedes Engineering Lead. For questions or additional analysis, contact the research team.*
+
+**Total Sources Analyzed**: {sum(len(files) for files in top_findings.values())} reports
+**Total Key Findings**: {sum(len(findings) for findings in top_findings.values())}
+"""
+    
+    return digest
+
+def main():
+    parser = argparse.ArgumentParser(description="Generate weekly research digest")
+    parser.add_argument("--days", type=int, default=7, 
+                       help="Number of days to look back (default: 7)")
+    args = parser.parse_args()
+    
+    if args.days <= 0:
+        print("Error: Days must be a positive integer")
+        sys.exit(1)
+    
+    print(f"Analyzing research outputs from the past {args.days} days...")
+    
+    # Group files by domain
+    domain_files = group_files_by_domain_and_date(args.days)
+    
+    if not domain_files:
+        print(f"No research files found in the past {args.days} days")
+        sys.exit(1)
+    
+    print(f"Found {len(domain_files)} domains with content:")
+    for domain, files in domain_files.items():
+        print(f"  - {domain}: {len(files)} files")
+    
+    # Select top findings
+    top_findings = select_top_findings(domain_files)
+    
+    if not top_findings:
+        print("No significant findings identified")
+        sys.exit(1)
+    
+    print(f"Selected top findings from {len(top_findings)} domains")
+    
+    # Generate digest
+    digest_content = generate_digest_content(top_findings, args.days)
+    
+    # Save digest
+    outputs_dir = Path.home() / ".openclaw" / "workspace" / "outputs"
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    filename = f"weekly-digest-{date_str}.md"
+    output_path = outputs_dir / filename
+    
+    try:
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(digest_content)
+        print(f"\nWeekly digest saved: {output_path}")
+        print(f"Word count: {len(digest_content.split())}")
+    except Exception as e:
+        print(f"Error saving digest: {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

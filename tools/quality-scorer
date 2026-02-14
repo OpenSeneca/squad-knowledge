@@ -1,0 +1,520 @@
+#!/usr/bin/env python3
+"""
+Output Quality Metrics
+
+Scores research output files on multiple quality dimensions:
+- Source count (how many URLs cited?)
+- Word count (is it substantial?)
+- Specificity (does it mention company names, numbers, dates?)
+- Structure (does it follow the output templates from GOALS.md?)
+
+Returns a score 1-10 with breakdown. Argus can use this for automated quality gating.
+
+Usage:
+    quality-scorer ~/.openclaw/workspace/outputs/2026-02-12-topic.md
+    quality-scorer --file-path "path/to/output.md"
+    quality-scorer --directory ~/.openclaw/workspace/outputs/
+
+Output: Detailed quality report with scores and recommendations
+"""
+
+import argparse
+import json
+import os
+import re
+import sys
+from datetime import datetime
+from pathlib import Path
+
+
+def analyze_file(filepath):
+    """Analyze a single output file for quality metrics."""
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            content = f.read()
+    except (IOError, UnicodeDecodeError) as e:
+        print(f"Error reading {filepath}: {e}", file=sys.stderr)
+        return None
+    
+    # Initialize metrics
+    metrics = {
+        'filepath': filepath,
+        'filename': os.path.basename(filepath),
+        'word_count': 0,
+        'source_count': 0,
+        'specificity_score': 0,
+        'structure_score': 0,
+        'overall_score': 0,
+        'details': {},
+        'recommendations': []
+    }
+    
+    # Word count
+    words = content.split()
+    metrics['word_count'] = len(words)
+    metrics['details']['word_count'] = len(words)
+    
+    # Source count - extract URLs
+    url_pattern = r'https?://[^\s\)]+(?=\)|\s|$)'
+    urls = re.findall(url_pattern, content)
+    metrics['source_count'] = len(urls)
+    metrics['details']['source_count'] = len(urls)
+    metrics['details']['sources'] = urls[:10]  # Store first 10 sources
+    
+    # Specificity analysis
+    specificity_metrics = analyze_specificity(content)
+    metrics['specificity_score'] = specificity_metrics['score']
+    metrics['details']['specificity'] = specificity_metrics
+    
+    # Structure analysis
+    structure_metrics = analyze_structure(content)
+    metrics['structure_score'] = structure_metrics['score']
+    metrics['details']['structure'] = structure_metrics
+    
+    # Calculate overall score
+    metrics['overall_score'] = calculate_overall_score(metrics)
+    
+    # Generate recommendations
+    metrics['recommendations'] = generate_recommendations(metrics)
+    
+    return metrics
+
+
+def analyze_specificity(content):
+    """Analyze content for specific details (companies, numbers, dates)."""
+    metrics = {
+        'score': 0,
+        'companies': [],
+        'numbers': [],
+        'dates': [],
+        'percentages': [],
+        'currencies': []
+    }
+    
+    # Company names - common biotech/pharma companies
+    company_patterns = [
+        r'\b(AstraZeneca|Roche|Pfizer|Novartis|Johnson & Johnson|Merck|Sanofi|GSK|BMS|Eli Lilly|AbbVie|Amgen|Moderna|BioNTech|Regeneron|Vertex|Gilead|Biogen)\b',
+        r'\b(Google|Microsoft|Amazon|Apple|Meta|OpenAI|Anthropic|NVIDIA|Intel|IBM|Oracle|Salesforce|Adobe)\b'
+    ]
+    
+    for pattern in company_patterns:
+        matches = re.findall(pattern, content, re.IGNORECASE)
+        metrics['companies'].extend(matches)
+    
+    # Numbers (including large numbers with commas)
+    number_pattern = r'\b\d{1,3}(?:,\d{3})*(?:\.\d+)?\b'
+    numbers = re.findall(number_pattern, content)
+    
+    # Filter out years that might be dates
+    for num in numbers:
+        num_clean = num.replace(',', '')
+        if not (1900 <= int(float(num_clean)) <= 2100):  # Not a year
+            metrics['numbers'].append(num)
+    
+    # Dates
+    date_patterns = [
+        r'\b\d{4}-\d{2}-\d{2}\b',  # YYYY-MM-DD
+        r'\b\d{1,2}/\d{1,2}/\d{4}\b',  # MM/DD/YYYY
+        r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2},? \d{4}\b'  # Month Day, Year
+    ]
+    
+    for pattern in date_patterns:
+        matches = re.findall(pattern, content, re.IGNORECASE)
+        metrics['dates'].extend(matches)
+    
+    # Percentages
+    percentage_pattern = r'\b\d+(?:\.\d+)?%|\b\d+(?:\.\d+)\s*percent\b'
+    metrics['percentages'] = re.findall(percentage_pattern, content, re.IGNORECASE)
+    
+    # Currencies
+    currency_pattern = r'\$\d+(?:,\d{3})*(?:\.\d+)?\b'
+    metrics['currencies'] = re.findall(currency_pattern, content)
+    
+    # Calculate specificity score (0-10)
+    score = 0
+    
+    # Companies (max 3 points)
+    company_count = len(set(metrics['companies']))
+    if company_count >= 5:
+        score += 3
+    elif company_count >= 3:
+        score += 2
+    elif company_count >= 1:
+        score += 1
+    
+    # Numbers (max 2 points)
+    number_count = len(set(metrics['numbers']))
+    if number_count >= 10:
+        score += 2
+    elif number_count >= 5:
+        score += 1
+    
+    # Dates (max 2 points)
+    date_count = len(set(metrics['dates']))
+    if date_count >= 3:
+        score += 2
+    elif date_count >= 1:
+        score += 1
+    
+    # Percentages (max 2 points)
+    percent_count = len(set(metrics['percentages']))
+    if percent_count >= 5:
+        score += 2
+    elif percent_count >= 2:
+        score += 1
+    
+    # Currencies (max 1 point)
+    if len(set(metrics['currencies'])) >= 1:
+        score += 1
+    
+    metrics['score'] = min(10, score)
+    return metrics
+
+
+def analyze_structure(content):
+    """Analyze content structure and formatting."""
+    metrics = {
+        'score': 0,
+        'headings': [],
+        'bullet_points': [],
+        'numbered_lists': [],
+        'has_title': False,
+        'has_summary': False,
+        'has_conclusion': False,
+        'has_sections': False,
+        'line_count': 0
+    }
+    
+    lines = content.split('\n')
+    metrics['line_count'] = len(lines)
+    
+    for line in lines:
+        line = line.strip()
+        
+        # Headings
+        if line.startswith('#'):
+            metrics['headings'].append(line)
+            if line.startswith('# ') and not metrics['has_title']:
+                metrics['has_title'] = True
+        
+        # Bullet points
+        elif line.startswith(('- ', '* ', '• ')):
+            metrics['bullet_points'].append(line)
+        
+        # Numbered lists
+        elif re.match(r'^\d+\.', line):
+            metrics['numbered_lists'].append(line)
+    
+    # Check for sections
+    metrics['has_sections'] = len(metrics['headings']) > 2
+    
+    # Check for summary (look for summary/executive abstract)
+    summary_indicators = ['summary', 'executive', 'abstract', 'overview', 'introduction']
+    content_lower = content.lower()
+    metrics['has_summary'] = any(indicator in content_lower for indicator in summary_indicators)
+    
+    # Check for conclusion
+    conclusion_indicators = ['conclusion', 'summary', 'key takeaways', 'final thoughts']
+    metrics['has_conclusion'] = any(indicator in content_lower for indicator in conclusion_indicators)
+    
+    # Calculate structure score (0-10)
+    score = 0
+    
+    # Title (2 points)
+    if metrics['has_title']:
+        score += 2
+    
+    # Sections (3 points)
+    if metrics['has_sections']:
+        score += 3
+    elif len(metrics['headings']) >= 2:
+        score += 2
+    elif len(metrics['headings']) >= 1:
+        score += 1
+    
+    # Lists (2 points)
+    total_lists = len(metrics['bullet_points']) + len(metrics['numbered_lists'])
+    if total_lists >= 10:
+        score += 2
+    elif total_lists >= 5:
+        score += 1
+    
+    # Summary/Conclusion (2 points)
+    if metrics['has_summary']:
+        score += 1
+    if metrics['has_conclusion']:
+        score += 1
+    
+    # Length (1 point)
+    if metrics['line_count'] >= 50:
+        score += 1
+    
+    metrics['score'] = min(10, score)
+    return metrics
+
+
+def calculate_overall_score(metrics):
+    """Calculate overall quality score from individual metrics."""
+    # Weight different components
+    weights = {
+        'word_count': 0.15,
+        'source_count': 0.25,
+        'specificity_score': 0.35,
+        'structure_score': 0.25
+    }
+    
+    # Normalize individual scores to 0-10 scale
+    scores = {}
+    
+    # Word count score (0-10)
+    word_count = metrics['word_count']
+    if word_count >= 1000:
+        scores['word_count'] = 10
+    elif word_count >= 750:
+        scores['word_count'] = 8
+    elif word_count >= 500:
+        scores['word_count'] = 6
+    elif word_count >= 300:
+        scores['word_count'] = 4
+    elif word_count >= 150:
+        scores['word_count'] = 2
+    else:
+        scores['word_count'] = 1
+    
+    # Source count score (0-10)
+    source_count = metrics['source_count']
+    if source_count >= 10:
+        scores['source_count'] = 10
+    elif source_count >= 7:
+        scores['source_count'] = 8
+    elif source_count >= 5:
+        scores['source_count'] = 6
+    elif source_count >= 3:
+        scores['source_count'] = 4
+    elif source_count >= 1:
+        scores['source_count'] = 2
+    else:
+        scores['source_count'] = 1
+    
+    # Specificity and structure are already 0-10
+    scores['specificity_score'] = metrics['specificity_score']
+    scores['structure_score'] = metrics['structure_score']
+    
+    # Calculate weighted average
+    overall_score = sum(scores[metric] * weights[metric] for metric in weights)
+    return round(overall_score, 1)
+
+
+def generate_recommendations(metrics):
+    """Generate improvement recommendations based on metrics."""
+    recommendations = []
+    
+    # Word count recommendations
+    if metrics['word_count'] < 300:
+        recommendations.append("📝 **Expand content**: Add more detailed analysis and examples (target 500+ words)")
+    elif metrics['word_count'] < 500:
+        recommendations.append("📝 **Add depth**: Include more comprehensive analysis (target 750+ words)")
+    
+    # Source count recommendations
+    if metrics['source_count'] < 3:
+        recommendations.append("📚 **Add sources**: Include at least 3-5 credible sources to support claims")
+    elif metrics['source_count'] < 5:
+        recommendations.append("📚 **Expand research**: Add more diverse sources for comprehensive coverage")
+    
+    # Specificity recommendations
+    specificity = metrics['details']['specificity']
+    if len(specificity['companies']) < 2:
+        recommendations.append("🏢 **Add company names**: Mention specific companies and organizations")
+    if len(specificity['numbers']) < 3:
+        recommendations.append("🔢 **Include metrics**: Add quantitative data and specific numbers")
+    if len(specificity['dates']) < 1:
+        recommendations.append("📅 **Add dates**: Include specific dates and timelines")
+    
+    # Structure recommendations
+    structure = metrics['details']['structure']
+    if not structure['has_title']:
+        recommendations.append("📋 **Add title**: Include a clear, descriptive title using # heading")
+    if not structure['has_sections']:
+        recommendations.append("📑 **Add sections**: Organize content with clear section headings")
+    if len(structure['bullet_points']) < 3:
+        recommendations.append("• **Use bullet points**: Structure key findings with bullet points for readability")
+    if not structure['has_summary']:
+        recommendations.append("📊 **Add summary**: Include an executive summary or overview section")
+    
+    # Overall quality recommendations
+    if metrics['overall_score'] >= 8:
+        recommendations.append("✅ **High quality**: This output meets most quality standards")
+    elif metrics['overall_score'] >= 6:
+        recommendations.append("📈 **Good foundation**: Address the recommendations above to reach high quality")
+    else:
+        recommendations.append("🚀 **Needs improvement**: Focus on the key recommendations above to enhance quality")
+    
+    return recommendations
+
+
+def format_report(metrics):
+    """Format the quality metrics as a readable report."""
+    report = []
+    report.append("# Quality Analysis Report")
+    report.append(f"**File:** {metrics['filename']}")
+    report.append(f"**Analyzed:** {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    report.append(f"**Overall Score:** {metrics['overall_score']}/10")
+    report.append("")
+    
+    # Scores breakdown
+    report.append("## Quality Scores Breakdown")
+    report.append(f"📊 **Overall Score:** {metrics['overall_score']}/10")
+    report.append(f"📝 **Word Count:** {metrics['word_count']} words")
+    report.append(f"📚 **Source Count:** {metrics['source_count']} sources")
+    report.append(f"🎯 **Specificity:** {metrics['specificity_score']}/10")
+    report.append(f"📋 **Structure:** {metrics['structure_score']}/10")
+    report.append("")
+    
+    # Detailed metrics
+    report.append("## Detailed Analysis")
+    
+    # Word count analysis
+    report.append("### Content Length")
+    report.append(f"- **Word Count:** {metrics['word_count']}")
+    if metrics['word_count'] < 300:
+        report.append("  ⚠️  Too brief - needs more content")
+    elif metrics['word_count'] < 500:
+        report.append("  ⚠️  Could be more comprehensive")
+    else:
+        report.append("  ✅ Good content length")
+    report.append("")
+    
+    # Source analysis
+    report.append("### Source Quality")
+    report.append(f"- **Number of Sources:** {metrics['source_count']}")
+    if metrics['source_count'] >= 5:
+        report.append("  ✅ Excellent source diversity")
+    elif metrics['source_count'] >= 3:
+        report.append("  ⚠️  Good but could add more sources")
+    else:
+        report.append("  ❌ Insufficient sources")
+    
+    if metrics['details']['sources']:
+        report.append("- **Sample Sources:**")
+        for source in metrics['details']['sources'][:5]:
+            report.append(f"  - {source}")
+    report.append("")
+    
+    # Specificity analysis
+    specificity = metrics['details']['specificity']
+    report.append("### Content Specificity")
+    report.append(f"- **Specificity Score:** {specificity['score']}/10")
+    report.append(f"- **Companies Mentioned:** {len(set(specificity['companies']))}")
+    report.append(f"- **Quantitative Data Points:** {len(set(specificity['numbers'] + specificity['percentages']))}")
+    report.append(f"- **Dates & Timelines:** {len(set(specificity['dates']))}")
+    report.append("")
+    
+    # Structure analysis
+    structure = metrics['details']['structure']
+    report.append("### Structure & Formatting")
+    report.append(f"- **Structure Score:** {structure['score']}/10")
+    report.append(f"- **Headings:** {len(structure['headings'])}")
+    report.append(f"- **Bullet Points:** {len(structure['bullet_points'])}")
+    report.append(f"- **Has Title:** {'✅' if structure['has_title'] else '❌'}")
+    report.append(f"- **Has Sections:** {'✅' if structure['has_sections'] else '❌'}")
+    report.append("")
+    
+    # Recommendations
+    report.append("## Recommendations for Improvement")
+    for i, rec in enumerate(metrics['recommendations'], 1):
+        report.append(f"{i}. {rec}")
+    report.append("")
+    
+    return '\n'.join(report)
+
+
+def analyze_directory(directory):
+    """Analyze all markdown files in a directory."""
+    if not os.path.exists(directory):
+        print(f"Error: Directory {directory} does not exist", file=sys.stderr)
+        return []
+    
+    results = []
+    for filename in os.listdir(directory):
+        if filename.endswith('.md'):
+            filepath = os.path.join(directory, filename)
+            metrics = analyze_file(filepath)
+            if metrics:
+                results.append(metrics)
+    
+    return results
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='Analyze quality of research output files',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+    quality-scorer ~/.openclaw/workspace/outputs/2026-02-12-topic.md
+    quality-scorer --file-path "path/to/output.md"
+    quality-scorer --directory ~/.openclaw/workspace/outputs/
+        """
+    )
+    
+    # File argument
+    parser.add_argument('file_path', nargs='?', help='Path to the output file to analyze')
+    
+    # Alternative arguments
+    parser.add_argument('--file', dest='file_path_alt', help='Path to the output file (alternative)')
+    parser.add_argument('--directory', help='Analyze all .md files in directory')
+    
+    # Output options
+    parser.add_argument('--json', action='store_true', help='Output as JSON')
+    parser.add_argument('--quiet', action='store_true', help='Only show overall score')
+    
+    args = parser.parse_args()
+    
+    # Determine what to analyze
+    filepath = args.file_path or args.file_path_alt
+    
+    if args.directory:
+        # Analyze directory
+        results = analyze_directory(args.directory)
+        if not results:
+            print("No valid markdown files found", file=sys.stderr)
+            sys.exit(1)
+        
+        if args.json:
+            print(json.dumps(results, indent=2))
+        elif args.quiet:
+            for result in results:
+                print(f"{result['filename']}: {result['overall_score']}/10")
+        else:
+            print(f"Quality Analysis for {len(results)} files in {args.directory}")
+            print("=" * 60)
+            for result in results:
+                print(format_report(result))
+                print("=" * 60)
+        
+        return
+    
+    elif filepath:
+        # Analyze single file
+        if not os.path.exists(filepath):
+            print(f"Error: File {filepath} does not exist", file=sys.stderr)
+            sys.exit(1)
+        
+        metrics = analyze_file(filepath)
+        if not metrics:
+            sys.exit(1)
+        
+        if args.json:
+            print(json.dumps(metrics, indent=2))
+        elif args.quiet:
+            print(f"{metrics['overall_score']}/10")
+        else:
+            print(format_report(metrics))
+    
+    else:
+        parser.print_help()
+        sys.exit(1)
+
+
+if __name__ == '__main__':
+    main()

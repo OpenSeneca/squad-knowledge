@@ -1,0 +1,350 @@
+#!/usr/bin/env python3
+"""
+Academic Paper Executive Summary
+
+Takes an arXiv or PubMed URL as input, fetches the paper content,
+and produces an executive summary with key findings and relevance scoring.
+
+Usage:
+    paper-digest "https://arxiv.org/abs/2401.12345"
+    paper-digest "https://pubmed.ncbi.nlm.nih.gov/12345678/"
+
+Output: Executive summary with key findings, relevance score, and recommended actions
+"""
+
+import argparse
+import json
+import os
+import re
+import sys
+import subprocess
+from datetime import datetime
+from pathlib import Path
+
+
+def fetch_web_content(url):
+    """Use web-read tool to fetch content from a URL."""
+    try:
+        # Call the web-read script
+        result = subprocess.run(
+            [os.path.expanduser('~/.openclaw/workspace/tools/web-read.py'), url],
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        
+        if result.returncode == 0:
+            return result.stdout.strip()
+        else:
+            print(f"Warning: web-read failed: {result.stderr}", file=sys.stderr)
+            return None
+    except subprocess.TimeoutExpired:
+        print("Error: web-read timed out", file=sys.stderr)
+        return None
+    except Exception as e:
+        print(f"Error calling web-read: {e}", file=sys.stderr)
+        return None
+
+
+def extract_paper_metadata(content):
+    """Extract paper metadata from content."""
+    metadata = {}
+    
+    # Try to extract title (first # heading or first line)
+    lines = content.split('\n')
+    for line in lines:
+        line = line.strip()
+        if line.startswith('# '):
+            metadata['title'] = line[2:].strip()
+            break
+        elif line and not line.startswith('#') and not line.startswith('```'):
+            metadata['title'] = line
+            break
+    
+    # Try to extract authors (look for patterns)
+    author_patterns = [
+        r'Authors?:?\s*([^\n]+)',
+        r'By\s+([^\n]+)',
+        r'Abstract.*?by\s+([^\n]+)',
+    ]
+    
+    for pattern in author_patterns:
+        match = re.search(pattern, content, re.IGNORECASE)
+        if match:
+            metadata['authors'] = match.group(1).strip()
+            break
+    
+    # Try to extract abstract
+    abstract_match = re.search(r'Abstract[:\s]*\n+(.*?)(?=\n\n|\n#|\nKeywords)', content, re.DOTALL | re.IGNORECASE)
+    if abstract_match:
+        metadata['abstract'] = abstract_match.group(1).strip().replace('\n', ' ')
+    
+    return metadata
+
+
+def extract_key_findings(content):
+    """Extract key findings from the paper content."""
+    findings = []
+    lines = content.split('\n')
+    
+    # Look for result/conclusion sections
+    in_results_section = False
+    in_conclusion_section = False
+    
+    for i, line in enumerate(lines):
+        line_lower = line.strip().lower()
+        
+        # Section detection
+        if any(term in line_lower for term in ['results', 'findings', 'outcomes']):
+            in_results_section = True
+            in_conclusion_section = False
+            continue
+        elif any(term in line_lower for term in ['conclusion', 'summary', 'discussion']):
+            in_conclusion_section = True
+            in_results_section = False
+            continue
+        elif line.startswith('#') or line.startswith('##'):
+            in_results_section = False
+            in_conclusion_section = False
+            continue
+        
+        # Extract findings in relevant sections
+        if (in_results_section or in_conclusion_section) and line.strip():
+            # Look for bullet points or numbered lists
+            if line.strip().startswith('-') or line.strip().startswith('*'):
+                finding = line.strip()[1:].strip()
+                if len(finding) > 20 and not finding.lower().startswith('figure'):
+                    findings.append(finding)
+            elif re.match(r'^\d+\.', line.strip()):
+                finding = re.sub(r'^\d+\.\s*', '', line.strip())
+                if len(finding) > 20:
+                    findings.append(finding)
+            # Also capture significant sentences
+            elif any(term in line_lower for term in ['showed', 'found', 'demonstrated', 'significant', 'improved']):
+                if len(line.strip()) > 30:
+                    findings.append(line.strip())
+    
+    # If no structured findings found, extract sentences with significance indicators
+    if not findings:
+        content_sentences = content.split('.')
+        for sentence in content_sentences:
+            sentence = sentence.strip()
+            if any(term in sentence.lower() for term in [
+                'significant', 'improved', 'reduced', 'increased', 'demonstrated', 
+                'effective', 'novel', 'breakthrough', 'discovered', 'developed'
+            ]) and len(sentence) > 40:
+                findings.append(sentence)
+    
+    return findings[:8]  # Limit to top 8 findings
+
+
+def assess_relevance(content, url):
+    """Assess relevance to Justin's work (biotech/pharma focus)."""
+    relevance_score = 1  # Base score
+    relevance_reasons = []
+    
+    # Check for biotech/pharma keywords
+    biotech_keywords = [
+        'drug', 'pharmaceutical', 'biotechnology', 'clinical', 'trial', 'patient',
+        'treatment', 'therapy', 'medicine', 'protein', 'cell', 'disease', 'cancer',
+        'fda', 'regulation', 'approval', 'diagnosis', 'biomarker', 'genomics'
+    ]
+    
+    # Check for AI/ML keywords
+    ai_keywords = [
+        'artificial intelligence', 'machine learning', 'neural network', 'deep learning',
+        'algorithm', 'model', 'prediction', 'classification', 'ai', 'ml'
+    ]
+    
+    content_lower = content.lower()
+    
+    # Count biotech relevance
+    biotech_count = sum(1 for keyword in biotech_keywords if keyword in content_lower)
+    ai_count = sum(1 for keyword in ai_keywords if keyword in content_lower)
+    
+    # Scoring logic
+    if biotech_count >= 3:
+        relevance_score = min(5, relevance_score + 2)
+        relevance_reasons.append(f"High biotech relevance ({biotech_count} keywords)")
+    elif biotech_count >= 1:
+        relevance_score = min(5, relevance_score + 1)
+        relevance_reasons.append(f"Moderate biotech relevance ({biotech_count} keywords)")
+    
+    if ai_count >= 3:
+        relevance_score = min(5, relevance_score + 2)
+        relevance_reasons.append(f"High AI/ML relevance ({ai_count} keywords)")
+    elif ai_count >= 1:
+        relevance_score = min(5, relevance_score + 1)
+        relevance_reasons.append(f"Moderate AI/ML relevance ({ai_count} keywords)")
+    
+    # URL source bonus
+    if 'arxiv.org' in url.lower():
+        relevance_score = min(5, relevance_score + 1)
+        relevance_reasons.append("arXiv source - cutting edge research")
+    elif 'pubmed.ncbi.nlm.nih.gov' in url.lower():
+        relevance_score = min(5, relevance_score + 2)
+        relevance_reasons.append("PubMed source - biomedical focus")
+    
+    # Clinical/business impact keywords
+    impact_keywords = [
+        'clinical trial', 'fda approval', 'market', 'commercial', 'regulatory',
+        'patient outcomes', 'real-world', 'implementation', 'adoption'
+    ]
+    
+    impact_count = sum(1 for keyword in impact_keywords if keyword in content_lower)
+    if impact_count >= 2:
+        relevance_score = min(5, relevance_score + 1)
+        relevance_reasons.append(f"Business/clinical impact ({impact_count} indicators)")
+    
+    return relevance_score, relevance_reasons
+
+
+def generate_recommendations(relevance_score, content, findings):
+    """Generate recommended actions based on the paper."""
+    recommendations = []
+    
+    if relevance_score >= 4:
+        recommendations.append("📋 **URGENT**: Share with R&D team immediately")
+        recommendations.append("📊 Schedule team discussion for next week")
+        recommendations.append("🔍 Research follow-up papers and authors")
+    
+    elif relevance_score >= 3:
+        recommendations.append("📧 Forward to relevant team members")
+        recommendations.append("📝 Add to next research team agenda")
+        recommendations.append("🔖 Bookmark for future reference")
+    
+    elif relevance_score >= 2:
+        recommendations.append("📚 Add to personal reading list")
+        recommendations.append("📋 Consider for competitive intelligence")
+    
+    else:
+        recommendations.append("📄 File for general awareness")
+        recommendations.append("⏰ Review if time permits")
+    
+    # Add specific recommendations based on content
+    if 'clinical trial' in content.lower():
+        recommendations.append("🏥 Check trial status and results")
+    
+    if 'regulatory' in content.lower() or 'fda' in content.lower():
+        recommendations.append("📋 Review regulatory implications")
+    
+    if 'collaboration' in content.lower():
+        recommendations.append("🤝 Evaluate partnership opportunities")
+    
+    return recommendations
+
+
+def generate_digest(url, content):
+    """Generate the complete paper digest."""
+    # Extract metadata
+    metadata = extract_paper_metadata(content)
+    
+    # Extract key findings
+    findings = extract_key_findings(content)
+    
+    # Assess relevance
+    relevance_score, relevance_reasons = assess_relevance(content, url)
+    
+    # Generate recommendations
+    recommendations = generate_recommendations(relevance_score, content, findings)
+    
+    # Build digest
+    digest = []
+    digest.append("# Paper Digest")
+    digest.append(f"**URL:** {url}")
+    digest.append(f"**Date:** {datetime.now().strftime('%Y-%m-%d')}")
+    digest.append("")
+    
+    # Title and authors
+    if metadata.get('title'):
+        digest.append(f"## Title")
+        digest.append(metadata['title'])
+        digest.append("")
+    
+    if metadata.get('authors'):
+        digest.append(f"## Authors")
+        digest.append(metadata['authors'])
+        digest.append("")
+    
+    # Abstract
+    if metadata.get('abstract'):
+        digest.append(f"## Abstract")
+        digest.append(metadata['abstract'])
+        digest.append("")
+    
+    # Key Findings
+    digest.append("## Key Findings")
+    if findings:
+        for i, finding in enumerate(findings, 1):
+            digest.append(f"{i}. {finding}")
+    else:
+        digest.append("No structured findings could be extracted from the paper.")
+    digest.append("")
+    
+    # Relevance Assessment
+    digest.append("## Relevance Assessment")
+    digest.append(f"**Score:** {relevance_score}/5")
+    digest.append("")
+    digest.append("**Reasoning:**")
+    for reason in relevance_reasons:
+        digest.append(f"- {reason}")
+    digest.append("")
+    
+    # Recommended Actions
+    digest.append("## Recommended Actions")
+    for rec in recommendations:
+        digest.append(rec)
+    digest.append("")
+    
+    # Processing Notes
+    digest.append("## Processing Notes")
+    digest.append("- This is an automated summary generated by the paper-digest tool")
+    digest.append("- Key findings are extracted using pattern matching")
+    digest.append("- Relevance scoring focuses on biotech/AI intersection")
+    digest.append(f"- For full details, refer to the original paper at: {url}")
+    
+    return '\n'.join(digest)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='Generate executive summary of academic papers',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+    paper-digest "https://arxiv.org/abs/2401.12345"
+    paper-digest "https://pubmed.ncbi.nlm.nih.gov/12345678/"
+    paper-digest "https://www.nature.com/articles/s41586-023-00000"
+        """
+    )
+    
+    parser.add_argument('url', 
+                       help='URL of the paper (arXiv, PubMed, Nature, etc.)')
+    
+    args = parser.parse_args()
+    
+    # Validate URL
+    if not args.url.startswith(('http://', 'https://')):
+        print("Error: URL must start with http:// or https://", file=sys.stderr)
+        sys.exit(1)
+    
+    print(f"📄 Fetching paper from: {args.url}")
+    
+    # Fetch content
+    content = fetch_web_content(args.url)
+    
+    if not content:
+        print("Error: Could not fetch paper content", file=sys.stderr)
+        sys.exit(1)
+    
+    print("📊 Processing paper...")
+    
+    # Generate digest
+    digest = generate_digest(args.url, content)
+    
+    # Output
+    print(digest)
+
+
+if __name__ == '__main__':
+    main()
