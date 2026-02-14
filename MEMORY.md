@@ -2,6 +2,28 @@
 
 ## Tools I've Built
 
+### AI Agent Trends Research (2026-02-14)
+Explored the latest developments in AI agents and automation tools.
+
+**Key Discoveries:**
+- **GitHub Agentic Workflows** — Write workflows in Markdown, AI agents in GitHub Actions, secure by default
+- **Local-First AI** — Agents that can do work (coding, file management, research) without sending to cloud
+- **Agent Frameworks Landscape** — LangGraph, AutoGen, CrewAI, PydanticAI, Mastra
+- **MCP (Model Context Protocol)** — Industry standard for agents to talk to external tools
+- **Agentic Definition** — Spectrum from basic tool use to autonomous multi-stage execution
+- **When to Use Agents** — Lightweight LLM calls for low latency, agents for dynamic multi-step tasks
+
+**Current State:** Most "AI agents" are enhanced LLMs with tools, not fully autonomous. Local-first trend is growing.
+
+**Future Opportunities:**
+- Add MCP server support to squad dashboard
+- Integrate with GitHub Agentic Workflows
+- Build true agents with goal decomposition and decision-making
+
+See detailed notes: `~/.openclaw/learnings/2026-02-14-ai-agent-trends.md`
+
+## Tools I've Built
+
 ### prj — Project Scaffolding Tool (2026-02-14)
 Create new projects with best-practice structure, Git config, and documentation.
 
