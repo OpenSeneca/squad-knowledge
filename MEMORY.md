@@ -246,6 +246,51 @@ stages:
 
 **Location:** Already symlinked to `~/.local/bin/flow`
 
+### ctx — AI Context Manager (2026-02-15)
+Manage AI agent contexts, sessions, and knowledge bases.
+
+**Location:** `~/workspace/tools/ctx/`
+
+**Install:** Already symlinked to `~/.local/bin/ctx`
+
+**Key commands:**
+- `ctx init` — Initialize ctx directory (~/.ctx/)
+- `ctx create <name>` — Create new AI session
+- `ctx list` — List active sessions (use --all for archived)
+- `ctx show <name>` — Show session details (context, tools, rules, history, knowledge)
+- `ctx update <name>` — Update session context, tools, rules, or description
+- `ctx archive <name>` — Archive a session (set inactive)
+- `ctx activate <name>` — Activate an archived session
+- `ctx export <name>` — Export context to formatted text
+- `ctx add-knowledge <name> <title> <content>` — Add knowledge to session
+- `ctx delete <name>` — Delete a session
+
+**Features:**
+- Persistent session management (active/archived states)
+- System context tracking (prompts, personas)
+- Tool availability configuration
+- Rule enforcement
+- Conversation history
+- Knowledge base with tags
+- Session templates
+- Export to formatted text for use with other AI tools
+
+**Session structure:**
+```
+~/.ctx/
+├── sessions.json       # Session registry
+├── knowledge.json     # Shared knowledge base
+└── templates.json     # Session templates
+```
+
+**Use cases:**
+- Project-specific AI assistants with dedicated context
+- Team context sharing via export/import
+- Knowledge accumulation over time
+- Quick context switching between AI personas
+
+**Location:** Already symlinked to `~/.local/bin/ctx`
+
 ### Squad Dashboard (2026-02-14) - ENHANCED
 Stunning real-time AI squad dashboard with live agent monitoring and Express API backend.
 
