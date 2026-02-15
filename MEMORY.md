@@ -291,6 +291,53 @@ Manage AI agent contexts, sessions, and knowledge bases.
 
 **Location:** Already symlinked to `~/.local/bin/ctx`
 
+### crew — CrewAI Execution Engine (2026-02-15)
+Execute and manage AI crews created with crw tool.
+
+**Location:** `~/workspace/tools/crew/`
+
+**Install:** Already symlinked to `~/.local/bin/crew`
+
+**Key commands:**
+- `crew list` — List all available crews and status
+- `crew simulate <name> -v` — Simulate crew execution without CrewAI
+- `crew validate <name>` — Validate crew configuration (checks structure, duplicates, dependencies)
+- `crew export <name> -o <file>` — Export crew to Python script compatible with CrewAI
+- `crew run <name>` — Run crew with CrewAI (coming soon)
+
+**Features:**
+- Simulation mode (no dependencies, preview structure)
+- Configuration validation (duplicate IDs, circular dependencies, invalid references)
+- Python script export for CrewAI integration
+- Dependency-aware task execution
+- Output file generation in simulation mode
+- Verbose mode for debugging
+
+**Works With:**
+- Crews created by `crw` tool
+- YAML configuration format
+- PyYAML for parsing
+
+**Example Workflow:**
+```bash
+# 1. Create crew with crw
+crw create research-team -d "Research and writing"
+
+# 2. Validate configuration
+crew validate research-team
+
+# 3. Simulate execution
+crew simulate research-team -v
+
+# 4. Export to Python
+crew export research-team -o research.py
+
+# 5. Run with CrewAI
+python research.py
+```
+
+**Location:** Already symlinked to `~/.local/bin/crew`
+
 ### Squad Dashboard (2026-02-14) - ENHANCED
 Stunning real-time AI squad dashboard with live agent monitoring and Express API backend.
 
