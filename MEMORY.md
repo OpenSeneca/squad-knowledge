@@ -192,6 +192,60 @@ execution:
 
 **Location:** Already symlinked to `~/.local/bin/crw`
 
+### flow — Development Workflow Orchestrator (2026-02-15)
+Orchestrate development workflows combining prj, agt, tick, snip, and crw tools.
+
+**Location:** `~/workspace/tools/flow/`
+
+**Install:** Already symlinked to `~/.local/bin/flow`
+
+**Key commands:**
+- `flow init` — Initialize flow directory (~/.flow/)
+- `flow create <name> -d <description>` — Create new workflow
+- `flow list` — List all workflows
+- `flow show <name>` — Show workflow details and stages
+- `flow run <name>` — Execute workflow
+- `flow run <name> --dry-run` — Preview commands without executing
+
+**Features:**
+- Multi-stage workflow definitions (setup → develop → test → deploy)
+- Integration with other tools (prj, agt, tick, snip, crw)
+- Dry-run mode for safe preview
+- YAML-based workflow configuration
+- Template variable support ({{variable}})
+- Zero external dependencies
+
+**Workflow structure:**
+```
+~/.flow/
+├── flows.json              # Workflow registry
+└── <workflow-name>/
+    └── workflow.yaml       # Stage and command definitions
+```
+
+**Example workflow:**
+```yaml
+stages:
+  - id: setup
+    name: "Setup Project"
+    commands:
+      - tool: prj
+        action: create
+        args: ["{{project_name}}", "--type", "python"]
+      - tool: tick
+        action: add
+        args: ["Implement features", "-p", "high"]
+```
+
+**Supported Tools:**
+- prj (project scaffolding)
+- agt (agent scaffolding)
+- tick (task tracking)
+- snip (snippet management)
+- crw (crew orchestration)
+
+**Location:** Already symlinked to `~/.local/bin/flow`
+
 ### Squad Dashboard (2026-02-14) - ENHANCED
 Stunning real-time AI squad dashboard with live agent monitoring and Express API backend.
 
