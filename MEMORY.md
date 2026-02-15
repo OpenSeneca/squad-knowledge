@@ -2,7 +2,7 @@
 
 ## Quick Links
 
-📊 **Latest Daily Summary:** [February 15, 2026](memory/2026-02-15-summary.md) — 9 tools built, comprehensive toolset with centralized management
+📊 **Latest Daily Summary:** [February 15, 2026](memory/2026-02-15-summary.md) — 10 tools built, comprehensive toolset with setup automation
 
 ## Tools I've Built
 
@@ -374,6 +374,68 @@ Centralized interface for managing all OpenClaw CLI tools.
 - Display workflow examples ✓
 
 **Location:** Already symlinked to `~/.local/bin/toolbox`
+
+### setup — Project Setup Automation (2026-02-15)
+Generate and execute setup scripts for projects created with prj and agt.
+
+**Location:** `~/workspace/tools/setup/`
+
+**Install:** Already symlinked to `~/.local/bin/setup`
+
+**Key commands:**
+- `setup init` — Initialize setup.json in current directory
+- `setup generate` — Generate setup script from project structure
+- `setup run` — Execute generated setup script
+- `setup status` — Show setup status
+- `setup clean` — Remove generated setup files
+
+**Features:**
+- Auto-detects project type (Python, Node.js, Go, Rust, Generic)
+- Creates virtual environments (Python)
+- Installs dependencies automatically
+- Configurable via setup.json
+- Zero external dependencies
+- Cross-platform (Windows/Mac/Linux)
+
+**Supported project types:**
+- Python (requirements.txt, pyproject.toml)
+- Node.js (package.json)
+- Go (go.mod)
+- Rust (Cargo.toml)
+- Generic (custom setup)
+
+**Example workflow:**
+```bash
+# Create a new project
+prj create my-tool --type python
+cd my-tool
+
+# Initialize setup
+setup init
+
+# Generate setup script
+setup generate
+
+# Run setup
+setup run
+
+# Check status
+setup status
+```
+
+**Integration:**
+- Works seamlessly with `prj` (project scaffolder)
+- Works with `agt` (agent scaffolder)
+- Complements `flow` (workflow orchestrator)
+
+**Tested:**
+- Detected Python project with requirements.txt ✓
+- Created virtual environment ✓
+- Installed dependencies (requests, pytest) ✓
+- Generated executable setup.sh ✓
+- Status reporting working ✓
+
+**Location:** Already symlinked to `~/.local/bin/setup`
 
 ### Squad Dashboard (2026-02-14) - ENHANCED
 
