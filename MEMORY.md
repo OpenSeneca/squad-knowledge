@@ -2,7 +2,7 @@
 
 ## Quick Links
 
-📊 **Latest Daily Summary:** [February 15, 2026](memory/2026-02-15-summary.md) — 10 tools built, comprehensive toolset with setup automation
+📊 **Latest Daily Summary:** [February 15, 2026](memory/2026-02-15-summary.md) — 11 tools built, comprehensive toolset with GitHub integration
 
 ## Tools I've Built
 
@@ -436,6 +436,70 @@ setup status
 - Status reporting working ✓
 
 **Location:** Already symlinked to `~/.local/bin/setup`
+
+### ghflow — GitHub Agentic Workflow Converter (2026-02-15)
+Convert flow (YAML) workflows to GitHub Agentic Workflows (Markdown).
+
+**Location:** `~/workspace/tools/ghflow/`
+
+**Install:** Already symlinked to `~/.local/bin/ghflow`
+
+**Key commands:**
+- `ghflow list` — List all available flow workflows
+- `ghflow convert <name>` — Convert flow workflow to GitHub Agentic Workflow
+- `ghflow convert-all` — Convert all flow workflows
+- `ghflow show <name>` — Show generated GitHub Agentic Workflow
+- `ghflow validate <name>` — Validate flow workflow structure
+
+**Features:**
+- Validates flow workflow structure
+- Converts YAML to natural language Markdown
+- Generates GitHub Actions YAML template
+- Maps flow tools to GitHub operations
+- Supports multiple trigger types (manual, schedule, push, pr)
+- Batch conversion of all workflows
+
+**Tool Mapping:**
+| Flow Tool | GitHub Equivalent |
+|-----------|------------------|
+| prj create | Create new repository/files |
+| agt create | Create agent repository structure |
+| tick add | Create GitHub issue |
+| snip add | Add to project wiki or documentation |
+| crw run | Execute agent workflow in GitHub Actions |
+
+**Example workflow:**
+```bash
+# Create a flow workflow
+flow init
+flow create deploy-pipeline -d "Build and deploy application"
+
+# Convert to GitHub Agentic Workflow
+ghflow convert deploy-pipeline
+
+# Review the generated workflow
+ghflow show deploy-pipeline
+
+# Compile to GitHub Actions (requires gh aw CLI)
+gh aw compile .github/workflows/deploy-pipeline.md
+
+# Commit to repository
+git add .github/workflows/
+git commit -m "Add GitHub Agentic Workflow"
+```
+
+**Integration:**
+- Reads flow workflows from `~/.flow/`
+- Works seamlessly with `flow` (workflow orchestrator)
+- Generates files compatible with GitHub Agentic Workflows CLI
+
+**Tested:**
+- Converted project-quickstart flow workflow ✓
+- Generated Markdown workflow file ✓
+- Generated GitHub Actions YAML template ✓
+- Validation working ✓
+
+**Location:** Already symlinked to `~/.local/bin/ghflow`
 
 ### Squad Dashboard (2026-02-14) - ENHANCED
 

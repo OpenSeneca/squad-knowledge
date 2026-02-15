@@ -1,0 +1,21 @@
+name: project-quickstart
+
+on:
+  manual:
+    types: [requested]
+
+permissions:
+  contents: read
+
+jobs:
+  agent-workflow:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Agent Workflow
+        uses: github/agent-workflow@v1
+        with:
+          workflow: project-quickstart.md
+          agent: github-copilot-cli
