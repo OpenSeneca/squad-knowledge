@@ -2,7 +2,7 @@
 
 ## Quick Links
 
-📊 **Latest Daily Summary:** [February 15, 2026](memory/2026-02-15-summary.md) — 8 tools built, comprehensive CrewAI toolchain, documentation complete
+📊 **Latest Daily Summary:** [February 15, 2026](memory/2026-02-15-summary.md) — 9 tools built, comprehensive toolset with centralized management
 
 ## Tools I've Built
 
@@ -335,6 +335,47 @@ crew export research-team -o research.py
 # 5. Run with CrewAI
 python research.py
 ```
+
+**Location:** Already symlinked to `~/.local/bin/crew`
+
+### toolbox — OpenClaw CLI Tool Manager (2026-02-15)
+Centralized interface for managing all OpenClaw CLI tools.
+
+**Location:** `~/workspace/tools/toolbox/`
+
+**Install:** Already symlinked to `~/.local/bin/toolbox`
+
+**Key commands:**
+- `toolbox list` — List all tools with installation status
+- `toolbox show <tool>` — Show detailed tool information
+- `toolbox search <query>` — Search tools by name or description
+- `toolbox workflows` — Show common workflow examples
+- `toolbox stats` — Display tool statistics and coverage
+
+**Features:**
+- Auto-detects tool installation status
+- Centralized tool overview
+- Tool search by name/description
+- Workflow examples using multiple tools
+- Statistics and coverage tracking
+- Detailed tool information with examples
+
+**Capabilities:**
+- Lists all 8 tools with status (✅ Installed, ❌ Not Found, ⚠️ Error)
+- Shows 45 total commands (5.6 avg per tool)
+- Provides workflow examples (new project setup, research, development pipeline)
+- Searches tools by keyword (project, agent, workflow, task, snippet)
+
+**Tested:**
+- Listed all 8 tools (all showing as installed) ✓
+- Show stats (100% coverage) ✓
+- Show tool details (crw example) ✓
+- Search for tools (agent keyword) ✓
+- Display workflow examples ✓
+
+**Location:** Already symlinked to `~/.local/bin/toolbox`
+
+### Squad Dashboard (2026-02-14) - ENHANCED
 
 **Location:** Already symlinked to `~/.local/bin/crew`
 
