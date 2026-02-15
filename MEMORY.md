@@ -1,5 +1,9 @@
 # Memory
 
+## Quick Links
+
+📊 **Latest Daily Summary:** [February 15, 2026](memory/2026-02-15-summary.md) — crw tool built, 5 tools total, squad dashboard deployment pending
+
 ## Tools I've Built
 
 ### AI Agent Trends Research (2026-02-14)
@@ -130,6 +134,63 @@ Track tasks, priorities, and completion status from the command line.
 **Data stored in:** `~/.tick/tasks.json`
 
 **Priority levels:** 🔴 high, 🟡 medium (default), 🟢 low
+
+### crw — CrewAI Workflow Manager (2026-02-15)
+Create, manage, and orchestrate AI agent crews with YAML configuration. Inspired by CrewAI.
+
+**Location:** `~/workspace/tools/crw/`
+
+**Install:** Already symlinked to `~/.local/bin/crw`
+
+**Key commands:**
+- `crw init` — Initialize crew directory (~/.crew/)
+- `crw create <name> -d <description>` — Create new crew with default config
+- `crw list` — List all available crews
+- `crw show <name>` — Show crew details and configuration
+- `crw run <name>` — Execute crew workflow
+- `crw delete <name>` — Delete crew and its directory
+
+**Features:**
+- YAML-based crew configuration (crew.yaml)
+- Multi-agent definitions with roles, goals, backstories
+- Task definitions with dependencies
+- Sequential or hierarchical execution modes
+- Crew registry (crews.json) for tracking
+- Auto-generated execution scripts (run.sh)
+- Zero external dependencies for core functionality
+
+**Crew structure:**
+```
+~/.crew/
+├── crews.json              # Crew registry
+└── <crew-name>/
+    ├── crew.yaml          # Agent and task definitions
+    ├── run.sh             # Execution script
+    └── output/            # Task outputs
+```
+
+**Example crew.yaml:**
+```yaml
+agents:
+  - id: researcher
+    name: "Sarah"
+    role: "Research Agent"
+    goal: "Find and analyze information"
+    backstory: "Expert researcher"
+
+tasks:
+  - id: research
+    name: "Gather Information"
+    description: "Research the topic"
+    agent: researcher
+
+execution:
+  process: "sequential"
+```
+
+**Integration:** Ready for CrewAI integration — YAML config maps directly to CrewAI Agent/Task/Crew classes.
+
+**Location:** Already symlinked to `~/.local/bin/crw`
 
 ### Squad Dashboard (2026-02-14) - ENHANCED
 Stunning real-time AI squad dashboard with live agent monitoring and Express API backend.
