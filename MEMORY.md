@@ -635,15 +635,18 @@ Unblocks squad dashboard deployment by automating SSH setup process. Tests conne
 3. **OpenClaw** — Use OpenClaw nodes tool
 4. **Mock** — Current default for testing
 
-**Deployment Status:**
+**Deployment Status (2026-02-16):**
 - ✅ Backend API implemented
 - ✅ Frontend connects to API
 - ✅ Auto-refresh working (30s)
 - ✅ Deployment script ready
-- ✅ SSH querying code implemented
+- ✅ SSH querying code implemented (RealAgentService.ts)
 - ✅ Fallback to simulation on failure
-- ⏳ SSH keys not configured (Permission denied)
-- ⏳ Forge deployment pending (needs SSH access)
+- ✅ DNS resolution fixed (marcus-squad)
+- ✅ SSH user identified (exedev)
+- ✅ 1/4 VMs accessible (marcus-squad)
+- ⏳ 3/4 VMs need SSH key configuration
+- ⏳ Forge deployment pending (ready for partial deployment)
 
 ## Learnings
 
