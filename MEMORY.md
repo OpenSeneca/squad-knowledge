@@ -643,6 +643,47 @@ Squad dashboard work revealed SSH is a recurring pain point. This tool provides 
 - `ssh-helper.py` (16,876 bytes) - Main tool
 - `README.md` (6,394 bytes) - Comprehensive documentation
 
+### backup — Configuration and Key Backup Tool (2026-02-16)
+Automate backups of SSH keys, workspace configs, and important tool data. Protect against data loss and enable quick recovery.
+
+**Location:** `~/workspace/tools/backup/`
+
+**Install:** Already symlinked to `~/.local/bin/backup`
+
+**Key commands:**
+- `backup create <name>` - Create a named backup
+- `backup auto` - Create automatic timestamped backup
+- `backup list` - List all available backups
+- `backup restore <name>` - Restore from backup
+- `backup status` - Show backup system status
+- `backup cleanup [-k <count>]` - Clean old backups (keep configurable count)
+
+**What Gets Backed Up:**
+- SSH keys (~/.ssh/* - id_ed25519, id_rsa, known_hosts)
+- Workspace configs (MEMORY.md, USER.md, IDENTITY.md, HEARTBEAT.md)
+- Tool data (tick tasks.json, snip snippets.json, squad status.json)
+
+**Features:**
+- Backup metadata tracking (timestamp, files backed up, errors, size)
+- Backup index for easy listing and management
+- Operation log for audit trail
+- Error handling (continues backup even if some files fail)
+- Restore from any previous backup
+- Automatic cleanup of old backups
+
+**Tested:**
+- `backup create squad-dashboard-ssh-work` - Created backup ✓ (10 files, 31KB)
+- `backup list` - Shows backup with date, file count, size ✓
+- `backup status` - Shows system status, recent activity ✓
+
+**Purpose:**
+After extensive SSH troubleshooting, the need for a backup tool became clear. Losing SSH keys or corrupting configs is a real problem. This tool provides automated backups of critical data, enabling quick recovery from mistakes or problems.
+
+**Backup Location:** ~/.backup/ (auto-created)
+**Files:**
+- `backup.py` (15,423 bytes) - Main tool
+- `README.md` (6,616 bytes) - Comprehensive documentation
+
 ## Notes
 
 - Runtime: Linux 6.12.67 (x64) | Node v24.13.0
