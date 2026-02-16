@@ -1,0 +1,658 @@
+# find — Fast File Search and Finder
+
+Search files by name, extension, content, or metadata. Fast and flexible.
+
+**Location:** `~/workspace/tools/find/`
+
+**Install:** Symlink to `~/.local/bin/find`
+
+```bash
+ln -s ~/workspace/tools/find/find.py ~/.local/bin/find
+chmod +x ~/workspace/tools/find/find.py
+```
+
+## Features
+
+- **Name Search** — Find files by filename
+- **Pattern Search** — Regex patterns for flexible matching
+- **Extension Filter** — Filter by file extension
+- **Content Search** — Search inside file contents
+- **Type Filter** — Filter by file type (code, image, document, etc.)
+- **Size Filters** — Min/max file size
+- **Date Filters** — Modified before/after dates
+- **Depth Control** — Limit search depth
+- **Hidden Files** — Include/exclude hidden files
+- **Directory Exclusion** — Exclude specific directories
+- **Multiple Formats** — Short or long output
+
+## Key Commands
+
+### Basic Search
+
+- `find search <query>` — Search by filename
+- `find search <query> -e <ext>` — Search with extension
+- `find search <query> -p <pattern>` — Search with regex pattern
+- `find -e <ext>` — Find all files with extension
+- `find -t <type>` — Find by file type
+
+### Advanced Search
+
+- `find search <query> -c <text>` — Search file content
+- `find search <query> --min-size <bytes>` — Minimum file size
+- `find search <query> --max-size <bytes>` — Maximum file size
+- `find search <query> --modified-after <date>` — Modified after date
+- `find search <query> --modified-before <date>` — Modified before date
+- `find search <query> -d <depth>` — Max directory depth
+- `find search <query> -x <dir>` — Exclude directory
+
+### Output Options
+
+- `find search <query>` — Simple list
+- `find search <query> -l` — Long format (details)
+- `find search <query> -n` — Count only
+- `find search <query> --limit <n>` — Limit results
+- `find search <query> -i` — Case insensitive
+
+## Examples
+
+### Basic Search
+
+```bash
+# Find files by name
+find search "config"
+# ./config.json
+# ./config.yaml
+
+# Find by extension
+find -e .py
+# ./src/main.py
+# ./tests/test_helper.py
+
+# Find by pattern
+find -p "test_.*\.py"
+# ./test_main.py
+# ./test_utils.py
+```
+
+### Content Search
+
+```bash
+# Search in file content
+find search "main" -c "TODO"
+# ./src/main.py
+# ./app/main.js
+
+# Search for imports
+find -e .py -c "import pandas"
+# ./data/analysis.py
+# ./ml/model.py
+```
+
+### Type Filtering
+
+```bash
+# Find code files
+find -t code
+# ./src/main.py
+# ./app/index.js
+# ./lib/helper.go
+
+# Find images
+find -t image
+# ./assets/logo.png
+# ./images/banner.jpg
+
+# Find documents
+find -t document
+# ./docs/manual.pdf
+# ./README.md
+```
+
+### Size Filtering
+
+```bash
+# Find large files (> 1MB)
+find --min-size 1048576
+# ./dataset.csv
+# ./backup.tar.gz
+
+# Find small files (< 1KB)
+find --max-size 1024
+# ./config.json
+# ./README.md
+```
+
+### Date Filtering
+
+```bash
+# Find files modified in last day
+find --modified-after 1d
+# ./yesterday_report.pdf
+
+# Find files modified since timestamp
+find --modified-after 1644982200
+
+# Find old files
+find --modified-before "2026-01-01"
+# ./archive/old_data.json
+```
+
+### Depth Control
+
+```bash
+# Search only current directory
+find search "main" -d 0
+# ./main.py
+
+# Search up to 2 levels deep
+find search "main" -d 2
+# ./src/main.py
+# ./tests/test_main.py
+```
+
+### Directory Exclusion
+
+```bash
+# Exclude node_modules
+find -e .js -x node_modules
+
+# Exclude multiple directories
+find -e .py -x node_modules -x __pycache__ -x .git
+
+# Exclude from default list (node_modules, __pycache__, .git, .next, dist, build)
+find search "config"
+```
+
+### Hidden Files
+
+```bash
+# Include hidden files
+find search "config" -a
+
+# Find all files including hidden
+find -a
+# ./.config
+# ./.env
+```
+
+### Case Insensitive
+
+```bash
+# Case insensitive search
+find search "CONFIG" -i
+# ./config.json
+# ./Config.yaml
+```
+
+## Use Cases
+
+### Finding Configuration Files
+
+```bash
+# Find all config files
+find -p ".*config.*"
+
+# Find JSON configs
+find search "config" -e .json
+
+# Find environment files
+find -e .env -e .env.*
+```
+
+### Finding Code Files
+
+```bash
+# Find Python files
+find -e .py
+
+# Find JavaScript/TypeScript files
+find -e .js -e .ts -e .jsx -e .tsx
+
+# Find all code files
+find -t code
+```
+
+### Finding Large Files
+
+```bash
+# Find files larger than 10MB
+find --min-size 10485760
+
+# Find files between 1MB and 10MB
+find --min-size 1048576 --max-size 10485760
+```
+
+### Content Search
+
+```bash
+# Search for TODO comments
+find search ".py" -c "TODO" -e .py
+
+# Search for function definitions
+find -e .py -c "def test_"
+
+# Search for imports
+find -e .py -c "from django"
+```
+
+### Finding Recent Files
+
+```bash
+# Files modified in last hour
+find --modified-after 1h
+
+# Files modified in last week
+find --modified-after 1w
+
+# Files modified since specific date
+find --modified-after "2026-02-15"
+```
+
+### Finding Media Files
+
+```bash
+# Find all images
+find -t image
+
+# Find videos
+find -t video
+
+# Find audio files
+find -t audio
+
+# Find all media
+find search "." -t image -t video -t audio
+```
+
+### Finding Documents
+
+```bash
+# Find all documents
+find -t document
+
+# Find PDFs specifically
+find -e .pdf
+
+# Find markdown files
+find -e .md
+```
+
+### Finding by Date Range
+
+```bash
+# Files modified between dates
+find --modified-after "2026-02-01" --modified-before "2026-02-28"
+
+# Old files (> 30 days)
+find --modified-before 30d
+
+# Recent files (< 1 day)
+find --modified-after 1d
+```
+
+### Quick Checks
+
+```bash
+# Count Python files
+find -e .py -n
+
+# Find test files
+find -p "test_.*\.py"
+
+# Find README files
+find search "README" -e .md -e .txt
+```
+
+## Type Filters
+
+| Type | Extensions | MIME Types |
+|------|------------|------------|
+| `code` | .py, .js, .ts, .java, .go, .rs, .c, .cpp | Code files |
+| `image` | .png, .jpg, .jpeg, .gif, .svg, .webp | image/* |
+| `video` | .mp4, .mov, .avi, .mkv, .webm | video/* |
+| `audio` | .mp3, .wav, .flac, .ogg, .m4a | audio/* |
+| `text` | .txt, .md, .json, .xml, .csv, .log | text/*, application/json |
+| `document` | .pdf, .doc, .docx, .txt, .md | Document types |
+| `archive` | .zip, .tar, .gz, .bz2, .7z, .rar | Archive types |
+
+## Directory Exclusion
+
+**Default excluded directories:**
+- `node_modules` — Node.js dependencies
+- `__pycache__` — Python cache
+- `.git` — Git repository
+- `.next` — Next.js build
+- `dist` — Build output
+- `build` — Build output
+
+**Add more exclusions:**
+```bash
+# Exclude specific directories
+find -x venv -x .venv -x env
+
+# Multiple exclusions
+find -x node_modules -x venv -x .git
+```
+
+## Date Formats
+
+**Unix timestamps:**
+```bash
+# Seconds since epoch
+find --modified-after 1644982200
+```
+
+**ISO format:**
+```bash
+# ISO 8601
+find --modified-after "2026-02-16T08:30:00"
+```
+
+**Relative dates:**
+```bash
+# Last day
+find --modified-after 1d
+
+# Last hour
+find --modified-after 1h
+
+# Last week
+find --modified-after 1w
+
+# Last 30 days
+find --modified-after 30d
+```
+
+## Integration with Other Tools
+
+**With run (command runner):**
+```bash
+# Find and run files
+for file in $(find -e .py); do
+    python "$file"
+done
+
+# Run found test files
+run add run-tests "for file in \$(find -p 'test_.*\.py'); do python \"\$file\"; done"
+```
+
+**With notes (note taking):**
+```bash
+# Note large files
+for file in $(find --min-size 10485760); do
+    notes add "Large file: $file" -c general
+done
+```
+
+**With snip (snippet manager):**
+```bash
+# Find and extract snippets
+find -e .py -c "TODO:" | head -5
+# ... save useful snippets to snip
+```
+
+**With backup (backup system):**
+```bash
+# Find and backup important files
+find -e .env -e .config.json
+# ... review and backup if needed
+```
+
+**With focus (session tracker):**
+```bash
+# Start session
+focus start "Find and fix test files"
+
+# Find test files
+TEST_FILES=$(find -p "test_.*\.py")
+
+# Work on files...
+for file in $TEST_FILES; do
+    # ... fix tests ...
+done
+
+# End session
+focus end
+```
+
+## Best Practices
+
+### Efficient Searching
+
+**Use extension filters:**
+```bash
+# Good (fast)
+find -e .py
+
+# Slower (searches all files)
+find search ".py"
+```
+
+**Use depth limits:**
+```bash
+# Good (searches only current level)
+find search "config" -d 0
+
+# Slower (searches entire tree)
+find search "config"
+```
+
+**Use type filters:**
+```bash
+# Good (fast MIME type check)
+find -t image
+
+# Slower (extension check)
+find -e .png -e .jpg -e .jpeg -e .gif
+```
+
+### Content Searching
+
+**Limit content search to text files:**
+```bash
+# Content search automatically skips binary files
+find search "TODO" -c "TODO"
+# Only searches in text files (< 1MB)
+```
+
+**Use specific extensions with content:**
+```bash
+# Good (fast + content search)
+find -e .py -c "import django"
+
+# Slower (searches all files)
+find -c "import django"
+```
+
+### Organizing Results
+
+**Count before searching:**
+```bash
+# Check how many results
+find -e .py -n
+
+# Then decide if need filters
+find -e .py | head -20
+```
+
+**Use limits for large directories:**
+```bash
+# Limit results
+find -e .py --limit 50
+
+# Or search specific directory
+cd src && find -e .py
+```
+
+**Use long format for details:**
+```bash
+# Get file details
+find search "main" -l
+
+# Output:
+#   1. main.py
+#        Path: ./src/main.py
+#        Size: 4.2KB
+#        Modified: 2026-02-16 09:30
+```
+
+### Performance Tips
+
+**Avoid searching in node_modules:**
+```bash
+# Already excluded by default
+find -e .js
+
+# But you can add more
+find -x node_modules -x venv -x .env
+```
+
+**Use specific paths:**
+```bash
+# Search in specific directory
+cd ~/projects/myapp && find -e .py
+
+# Or use depth to limit
+find -e .py -d 3
+```
+
+**Use extension filters instead of patterns:**
+```bash
+# Good (faster)
+find -e .py
+
+# Slower (regex)
+find -p ".*\.py$"
+```
+
+## Troubleshooting
+
+### "No files found"
+
+**Try broader search:**
+```bash
+# Too specific
+find search "main_controller_v2_final" -e .py
+
+# Broader
+find search "main" -e .py
+```
+
+**Check if files exist:**
+```bash
+# List files
+ls -la
+
+# Check extensions
+find -l
+```
+
+**Check filters:**
+```bash
+# Remove filters
+find search "main"
+
+# Add back one by one
+find search "main" -e .py
+find search "main" -e .py -d 2
+```
+
+### Search is slow
+
+**Use more filters:**
+```bash
+# Add extension filter
+find -e .py
+
+# Add depth limit
+find -d 3
+
+# Add type filter
+find -t code
+```
+
+**Exclude more directories:**
+```bash
+# Add exclusions
+find -x node_modules -x venv -x .git -x build -x dist
+```
+
+**Don't search content unnecessarily:**
+```bash
+# Slow (searches content)
+find -c "import"
+
+# Fast (name only)
+find search "import"
+```
+
+### Content search not working
+
+**Check file is text:**
+```bash
+# Content search only works on text files
+find -e .py -c "TODO"  # Works
+find -e .pdf -c "TODO"  # Won't work (binary)
+```
+
+**Large files skipped:**
+```bash
+# Files > 1MB skipped for content search
+find --max-size 1048576 -c "TODO"
+```
+
+### Date filter not working
+
+**Check date format:**
+```bash
+# Try different formats
+find --modified-after 1d           # Relative
+find --modified-after 1644982200    # Unix timestamp
+find --modified-after "2026-02-16"  # ISO date
+```
+
+## Comparison to Alternatives
+
+**vs `find` (GNU):**
+- `find`: More powerful, more complex syntax
+- `find`: Our tool is simpler, type-aware
+
+**vs `fzf`:**
+- `find`: Fast, interactive search
+- `fzf`: Our tool is faster for simple queries
+
+**vs `fd`:**
+- `find`: Fast, user-friendly
+- `fd`: Our tool has content search
+
+**vs `ripgrep`:**
+- `find`: Fast content search
+- `ripgrep`: Our tool has file type filtering
+
+## Future Enhancements
+
+- **Regex content search** — Regex in file content
+- **Replace in files** — Find and replace across files
+- **Copy/move results** — Act on found files
+- **Batch operations** — Delete, move, copy found files
+- **Symlink detection** — Detect and follow symlinks
+- **Duplicate detection** — Find duplicate files
+- **File preview** — Show file preview in results
+- **Interactive mode** — Select files interactively
+- **Indexing** - Fast index for repeated searches
+
+## Requirements
+
+- Python 3.6+
+- No external dependencies
+- No storage (stateless)
+
+## License
+
+MIT License — Part of OpenClaw Workspace Toolset
+
+---
+
+**Fast. Flexible. Powerful.**
+
+Find files instantly with powerful filtering options.
