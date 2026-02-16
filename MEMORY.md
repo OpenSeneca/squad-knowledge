@@ -610,6 +610,39 @@ Unblocks squad dashboard deployment by automating SSH setup process. Tests conne
 3. Verify: `squad-setup verify`
 4. Deploy: `cd ~/workspace/squad-dashboard && ./deploy-forge.sh`
 
+### ssh-helper — SSH Connection and Key Management Helper (2026-02-16)
+Comprehensive SSH diagnostics and troubleshooting tool. Systematically identifies and fixes SSH connection issues.
+
+**Location:** `~/workspace/tools/ssh-helper/`
+
+**Install:** Already symlinked to `~/.local/bin/ssh-helper`
+
+**Key commands:**
+- `ssh-helper test <host>` - Quick SSH connection test
+- `ssh-helper diagnose <host>` - Full diagnostics (5 checks)
+- `ssh-helper copy-key <host>` - Copy SSH key to host
+- `ssh-helper tailscale` - Test Tailscale SSH availability
+- `ssh-helper list` - List known SSH connections
+
+**Diagnostics Checks:**
+1. DNS Resolution - Hostname resolves to IP address
+2. Port Connectivity - SSH port (22) is reachable (uses nc)
+3. SSH Authentication - SSH key is authorized on remote host
+4. SSH Keys - Local keys exist and have correct permissions (600)
+5. Tailscale - Host is in Tailscale network (alternative auth)
+
+**Tested:**
+- `ssh-helper test marcus-squad` - Connection successful ✓
+- `ssh-helper diagnose argus-squad` - Correctly identifies SSH key issue ✓
+- `ssh-helper tailscale` - Tailscale status check working ✓
+
+**Purpose:**
+Squad dashboard work revealed SSH is a recurring pain point. This tool provides systematic SSH troubleshooting for any host, not just squad VMs. Identifies root causes of SSH failures and provides actionable suggestions.
+
+**Files:**
+- `ssh-helper.py` (16,876 bytes) - Main tool
+- `README.md` (6,394 bytes) - Comprehensive documentation
+
 ## Notes
 
 - Runtime: Linux 6.12.67 (x64) | Node v24.13.0
