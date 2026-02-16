@@ -29,7 +29,7 @@ SQUAD_VMS = {
     'galen-squad': 'Deep Research Agent',
 }
 
-SQUAD_USER = 'forge'
+SQUAD_USER = 'exedev'
 SSH_TIMEOUT = 5
 STATUS_FILE = Path.home() / '.squad' / 'status.json'
 
