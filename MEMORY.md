@@ -719,6 +719,7 @@ After extensive SSH troubleshooting, the need for a backup tool became clear. Lo
 - ✅ DNS resolution fixed (marcus-squad)
 - ✅ SSH user identified (exedev)
 - ✅ 1/4 VMs accessible (marcus-squad)
+- ✅ Simulation mode enhanced (time-aware, status-specific tasks)
 - ⏳ 3/4 VMs need SSH key configuration
 - ⏳ Forge deployment pending (ready for partial deployment)
 
