@@ -1,0 +1,60 @@
+{
+  "updated": "2026-02-17T14:18:00Z",
+  "agents": [
+    {
+      "name": "Seneca",
+      "role": "Coordinator",
+      "status": "active",
+      "host": "lobster-1",
+      "ip": "100.101.15.68",
+      "last_output": "tinyseed-accelerator-analysis.md",
+      "last_updated": "2026-02-17T14:18:00Z",
+      "uptime": "11d",
+      "activity": 85
+    },
+    {
+      "name": "Marcus",
+      "role": "Research",
+      "status": "active",
+      "host": "marcus-squad",
+      "ip": "100.98.223.103",
+      "last_output": "2026-02-16-summary.md",
+      "last_updated": "2026-02-16T23:59:00Z",
+      "uptime": "0d",
+      "activity": 78
+    },
+    {
+      "name": "Galen",
+      "role": "Research",
+      "status": "active",
+      "host": "galen-squad",
+      "ip": "100.123.121.125",
+      "last_output": "Unknown",
+      "last_updated": "2026-02-16T18:00:00Z",
+      "uptime": "0d",
+      "activity": 0
+    },
+    {
+      "name": "Archimedes",
+      "role": "Build",
+      "status": "active",
+      "host": "archimedes-squad",
+      "ip": "100.100.56.102",
+      "last_output": "2026-02-17.md",
+      "last_updated": "2026-02-17T14:18:00Z",
+      "uptime": "0d",
+      "activity": 65
+    },
+    {
+      "name": "Argus",
+      "role": "Ops",
+      "status": "active",
+      "host": "argus-squad",
+      "ip": "100.108.219.91",
+      "last_output": "Unknown",
+      "last_updated": "2026-02-16T12:00:00Z",
+      "uptime": "0d",
+      "activity": 86
+    }
+  ]
+}

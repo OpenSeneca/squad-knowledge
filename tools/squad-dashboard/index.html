@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenSeneca Squad Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔧 OpenSeneca Squad Dashboard</h1>
+            <div class="dashboard-info">
+                <span id="last-updated">Loading...</span>
+                <span class="refresh-timer">Next refresh: <span id="countdown">60</span>s</span>
+            </div>
+        </header>
+
+        <main>
+            <div class="team-overview">
+                <h2>👥 Team Overview</h2>
+                <div class="overview-stats">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Agents</div>
+                        <div class="stat-value" id="total-agents">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Active</div>
+                        <div class="stat-value" id="active-agents">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Activity Level</div>
+                        <div class="stat-value" id="activity-level">0%</div>
+                    </div>
+                </div>
+            </div>
+
+            <section class="agents-section">
+                <h2>🤖 Agent Status</h2>
+                <div id="agents-grid" class="agents-grid">
+                    <!-- Agents will be dynamically loaded here -->
+                </div>
+            </section>
+
+            <section class="activity-feed">
+                <h2>📊 Recent Activity</h2>
+                <div id="activity-list" class="activity-list">
+                    <!-- Activity items will be loaded here -->
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <div class="connection-status">
+                <span id="connection-indicator">●</span> 
+                <span id="connection-text">Connected</span>
+            </div>
+            <div class="auto-refresh-info">
+                Auto-refresh every 60 seconds • Last updated: <span id="update-time">--</span>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // Dashboard JavaScript
+        let refreshTimer;
+        let countdownInterval;
+        const REFRESH_INTERVAL = 60; // seconds
+
+        // Format time ago
+        function timeAgo(date) {
+            const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+            if (seconds < 60) return 'just now';
+            if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+            if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+            return Math.floor(seconds / 86400) + 'd ago';
+        }
+
+        // Format uptime
+        function formatUptime(uptime) {
+            if (uptime === '0d' || uptime === '0h' || uptime === '0m') return 'new';
+            return uptime;
+        }
+
+        // Get status color
+        function getStatusColor(status) {
+            switch (status.toLowerCase()) {
+                case 'active': return '#10b981'; // green
+                case 'busy': return '#f59e0b'; // yellow
+                case 'down': return '#ef4444'; // red
+                default: return '#6b7280'; // gray
+            }
+        }
+
+        // Render agent cards
+        function renderAgents(agents) {
+            const agentsGrid = document.getElementById('agents-grid');
+            agentsGrid.innerHTML = '';
+
+            agents.forEach(agent => {
+                const card = document.createElement('div');
+                card.className = 'agent-card';
+                card.innerHTML = `
+                    <div class="agent-header">
+                        <div class="agent-name">${agent.name}</div>
+                        <div class="agent-role">${agent.role}</div>
+                    </div>
+                    <div class="agent-status" style="border-left-color: ${getStatusColor(agent.status)}">
+                        <span class="status-indicator" style="background: ${getStatusColor(agent.status)}"></span>
+                        <span class="status-text">${agent.status.toUpperCase()}</span>
+                    </div>
+                    <div class="agent-details">
+                        <div class="detail-row">
+                            <span class="detail-label">Host:</span>
+                            <span class="detail-value">${agent.host}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Uptime:</span>
+                            <span class="detail-value">${formatUptime(agent.uptime)}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Last Output:</span>
+                            <span class="detail-value">${agent.last_output}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Activity:</span>
+                            <span class="detail-value">${agent.activity}%</span>
+                        </div>
+                    </div>
+                `;
+                agentsGrid.appendChild(card);
+            });
+        }
+
+        // Render activity feed
+        function renderActivity(agents) {
+            const activityList = document.getElementById('activity-list');
+            activityList.innerHTML = '';
+
+            agents.forEach(agent => {
+                const activityItem = document.createElement('div');
+                activityItem.className = 'activity-item';
+                activityItem.innerHTML = `
+                    <div class="activity-agent">${agent.name}</div>
+                    <div class="activity-content">Updated ${agent.last_output}</div>
+                    <div class="activity-time">${timeAgo(agent.last_updated)}</div>
+                `;
+                activityList.appendChild(activityItem);
+            });
+        }
+
+        // Update team overview stats
+        function updateTeamStats(agents) {
+            const totalAgents = agents.length;
+            const activeAgents = agents.filter(a => a.status.toLowerCase() === 'active').length;
+            const avgActivity = agents.reduce((sum, a) => sum + a.activity, 0) / totalAgents;
+
+            document.getElementById('total-agents').textContent = totalAgents;
+            document.getElementById('active-agents').textContent = activeAgents;
+            document.getElementById('activity-level').textContent = Math.round(avgActivity) + '%';
+        }
+
+        // Load data from API
+        async function loadData() {
+            try {
+                const response = await fetch('/api/status');
+                if (!response.ok) {
+                    throw new Error('Failed to load data');
+                }
+                
+                const data = await response.json();
+                const agents = data.agents || [];
+
+                // Update last updated time
+                const updatedTime = new Date(data.updated).toLocaleString();
+                document.getElementById('last-updated').textContent = 'Last updated: ' + updatedTime;
+                document.getElementById('update-time').textContent = updatedTime;
+
+                // Render components
+                renderAgents(agents);
+                renderActivity(agents);
+                updateTeamStats(agents);
+
+                // Update connection status
+                document.getElementById('connection-indicator').style.color = '#10b981';
+                document.getElementById('connection-text').textContent = 'Connected';
+
+            } catch (error) {
+                console.error('Error loading data:', error);
+                
+                // Update connection status
+                document.getElementById('connection-indicator').style.color = '#ef4444';
+                document.getElementById('connection-text').textContent = 'Error';
+            }
+        }
+
+        // Start countdown timer
+        function startCountdown() {
+            let seconds = REFRESH_INTERVAL;
+            
+            countdownInterval = setInterval(() => {
+                seconds--;
+                document.getElementById('countdown').textContent = seconds;
+                
+                if (seconds <= 0) {
+                    seconds = REFRESH_INTERVAL;
+                    loadData();
+                }
+            }, 1000);
+        }
+
+        // Initialize dashboard
+        function init() {
+            loadData();
+            startCountdown();
+            
+            // Set up auto-refresh
+            refreshTimer = setInterval(loadData, REFRESH_INTERVAL * 1000);
+        }
+
+        // Start when page loads
+        document.addEventListener('DOMContentLoaded', init);
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (refreshTimer) clearInterval(refreshTimer);
+            if (countdownInterval) clearInterval(countdownInterval);
+        });
+    </script>
+</body>
+</html>
