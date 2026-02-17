@@ -37,6 +37,7 @@ Concise operational state. Detailed notes in `learnings/`.
 4. **Paper Summarizer** — Research paper summaries (priority #3)
 5. **Blog Assistant** — Blog post outlines (priority #4)
 6. **Research Extractor** — Content extraction for Seneca (HEARTBEAT.md #3)
+7. **Squad Stats** — Productivity analyzer (seed-engineering-standards.md)
 
 ### Seneca Tasks (Both Completed ✅)
 1. **squad-eval** — Squad performance evaluation (Task #1)
@@ -47,4 +48,4 @@ Concise operational state. Detailed notes in `learnings/`.
 2. **GitHub Publication Packages** — 4 tools (claude-code-analyzer, dns, fhash, archive)
 3. **OpenClaw Session Analyzer** — Session log parser
 
-**Total:** 14 tools, 1 full-stack dashboard, 20 commits, ~240KB+ of code/docs
+**Total:** 15 tools, 1 full-stack dashboard, 22 commits, ~250KB+ of code/docs
