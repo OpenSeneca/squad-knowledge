@@ -113,6 +113,29 @@ The `data.json` file is updated by:
 
 ## Deployment to Forge
 
+### Using the Deployment Script (Recommended)
+
+```bash
+# From the squad-dashboard directory
+cd ~/workspace/tools/squad-dashboard/
+
+# Run deployment script
+./deploy-forge.sh
+
+# Or with custom settings
+./deploy-forge.sh --host 100.93.69.117 --user exedev --dir ~/dashboard --port 8000
+```
+
+The deployment script will:
+- ✓ Check SSH connectivity to forge
+- ✓ Copy all files to the remote directory
+- ✓ Install PM2 if not present
+- ✓ Start/restart the dashboard service
+- ✓ Display service status and URL
+- ✓ Optionally set up auto-start on boot
+
+### Manual Deployment
+
 ```bash
 # Copy to forge
 scp -r squad-dashboard/ exedev@100.93.69.117:~/dashboard/
