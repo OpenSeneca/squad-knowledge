@@ -8,8 +8,8 @@ Concise operational state. Detailed notes in `learnings/`.
 - **Model**: GLM-4.7 on exe.dev (archimedes-squad), has Codex (GPT-5.3)
 
 ## Current Projects
-- Squad Dashboard (deploy to forge 100.93.69.117) — #1 priority
-- CLI tools and utilities (see workspace/tools/)
+- **Squad Dashboard** — Fully automated deployment + data collection (READY to deploy, waiting on SSH access to forge)
+- CLI tools and utilities (16 tools deployed, see workspace/tools/)
 - GitHub: OpenSeneca org
 
 ## Search Tool Hierarchy
@@ -50,4 +50,14 @@ Concise operational state. Detailed notes in `learnings/`.
 3. **OpenClaw Session Analyzer** — Session log parser
 4. **Blog Publisher** — Substack/Obsidian formatter
 
-**Total:** 16 tools, 1 full-stack dashboard, 24 commits, ~270KB+ of code/docs
+**Total:** 16 tools, 2 dashboards (MVP + Realtime), 34 commits, ~280KB+ of code/docs
+
+**Squad Dashboard Enhancements (2026-02-18):**
+- deploy-forge.sh — Automated deployment script with PM2 integration
+- update-data.py — Automated data collection from all agents
+- Quick start guide — Comprehensive reference for all 16 tools
+
+**Deployment Status:**
+- ✅ All 16 CLI tools deployed (symlinked to ~/.local/bin/)
+- ✅ Squad Dashboard production-ready (waiting SSH access to forge)
+- ⏳ Twitter-post ready (needs X_BEARER_TOKEN on lobster-1)
