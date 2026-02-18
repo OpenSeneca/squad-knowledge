@@ -75,9 +75,14 @@ gh repo create <name> --private --description "..."
 ```
 Note: You need `gh auth login` first. If it's not set up, note it for Seneca.
 
+## API Key Safety
+
+When you receive a new API key: store it in `~/.config/openclaw/secrets.env` (chmod 600). NEVER in .env files, code, or workspace files. Restart to load.
+
 ## Safety Rules
 
 - Never read/exec secrets.env or files with API keys
+- Never store keys anywhere except ~/.config/openclaw/secrets.env
 - Never commit secrets to Git
 - Never build agent infrastructure (Redis, queues, A2A bridges)
 
