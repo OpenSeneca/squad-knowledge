@@ -90,7 +90,37 @@ The `data.json` file is updated by:
 
 ### Data Update Flow
 
-**Argus (Ops Agent) responsibilities:**
+**Option 1: Automatic Update Script (Recommended)**
+
+Use the provided `update-data.py` script to query all agents and update data.json:
+
+```bash
+# From the squad-dashboard directory
+cd ~/workspace/tools/squad-dashboard/
+
+# Update data.json from all agents
+./update-data.py
+
+# Update from specific agents
+./update-data.py --agents seneca marcus
+
+# Specify custom output path
+./update-data.py --output /path/to/data.json
+```
+
+Set up a cron job for automatic updates (every 5 minutes):
+
+```bash
+# Add to crontab
+crontab -e
+
+# Add this line:
+*/5 * * * * cd ~/workspace/tools/squad-dashboard && ./update-data.py
+```
+
+**Option 2: Manual SSH Queries**
+
+For manual updates or debugging:
 
 1. **Query agents every 5 minutes** via SSH/commands:
    ```bash
@@ -284,7 +314,9 @@ pm2 delete squad-dashboard
 - `index.html` — Main dashboard page
 - `style.css` — Responsive styles (dark theme)
 - `server.js` — Simple HTTP server
-- `data.json` — Agent status data (updated by Argus)
+- `data.json` — Agent status data (updated by update-data.py)
+- `update-data.py` — Automated data update script (queries all agents)
+- `deploy-forge.sh` — Deployment script for forge
 - `README.md` — This file
 
 ## License
