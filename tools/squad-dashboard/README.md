@@ -98,6 +98,9 @@ Use the provided `update-data.py` script to query all agents and update data.jso
 # From the squad-dashboard directory
 cd ~/workspace/tools/squad-dashboard/
 
+# Show agent status (without modifying data.json)
+./update-data.py status
+
 # Update data.json from all agents
 ./update-data.py
 
@@ -117,6 +120,13 @@ crontab -e
 # Add this line:
 */5 * * * * cd ~/workspace/tools/squad-dashboard && ./update-data.py
 ```
+
+**Features:**
+- Color-coded output (green=success, yellow=warning, red=error)
+- Activity score calculation (0-100 based on recent output)
+- Graceful failure handling (unreachable agents don't crash script)
+- Quick status command (`status` action)
+- Summary statistics (active count, average activity)
 
 **Option 2: Manual SSH Queries**
 

@@ -19,6 +19,16 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 
+# Terminal colors for output
+class Colors:
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    BLUE = '\033[94m'
+    BOLD = '\033[1m'
+    RESET = '\033[0m'
+
+
 # Squad agent configuration
 AGENTS = {
     "seneca": {
@@ -68,7 +78,15 @@ def ssh_command(host: str, command: str, timeout: int = 10) -> Optional[str]:
         if result.returncode == 0:
             return result.stdout.strip()
         return None
-    except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
+    except subprocess.TimeoutExpired:
+        # Timeout: network or agent is slow
+        return None
+    except subprocess.SubprocessError as e:
+        # Could be SSH key issues, connection refused
+        return None
+    except FileNotFoundError:
+        # SSH command not found
+        print(f"{Colors.RED}✗ ssh command not found{Colors.RESET}")
         return None
 
 
@@ -176,7 +194,7 @@ def query_agent(agent_id: str, agent_config: Dict) -> Dict:
     host = agent_config["host"]
     now = datetime.now(timezone.utc).isoformat()
 
-    print(f"Querying {agent_config['name']} ({host})...")
+    print(f"  Querying {agent_config['name']} ({host})...")
 
     last_output = get_last_output(host)
     uptime = get_uptime(host)
@@ -207,7 +225,7 @@ def update_data_json(output_path: Path, agent_list: List[str] = None) -> bool:
 
     for agent_id in agent_ids:
         if agent_id not in AGENTS:
-            print(f"Warning: Unknown agent '{agent_id}'")
+            print(f"{Colors.YELLOW}⚠ Unknown agent '{agent_id}'{Colors.RESET}")
             continue
 
         agent_config = AGENTS[agent_id]
@@ -225,12 +243,57 @@ def update_data_json(output_path: Path, agent_list: List[str] = None) -> bool:
         with open(output_path, "w") as f:
             json.dump(data, f, indent=2)
 
-        print(f"\n✓ Updated data.json: {output_path}")
-        print(f"✓ Queried {len(agents)} agents")
+        print(f"\n{Colors.GREEN}✓{Colors.RESET} Updated data.json: {output_path}")
+        print(f"{Colors.GREEN}✓{Colors.RESET} Queried {len(agents)} agents")
+
+        # Show summary statistics
+        active_count = sum(1 for a in agents if a["status"] == "active")
+        print(f"\n{Colors.BLUE}Summary:{Colors.RESET}")
+        print(f"  Active agents:   {Colors.GREEN}{active_count}{Colors.RESET} / {len(agents)}")
+        if len(agents) > 0:
+            avg_activity = sum(a["activity"] for a in agents) / len(agents)
+            print(f"  Average activity: {avg_activity:.1f}/100")
+
         return True
     except IOError as e:
-        print(f"\n✗ Error writing data.json: {e}", file=sys.stderr)
+        print(f"\n{Colors.RED}✗ Error writing data.json: {e}{Colors.RESET}", file=sys.stderr)
         return False
+
+
+def show_status():
+    """Show current status of all agents without updating data.json."""
+    print(f"{Colors.BOLD}Squad Agent Status{Colors.RESET}")
+    print("=" * 50)
+    print()
+
+    active_count = 0
+    inactive_count = 0
+    total_activity = 0
+
+    for agent_id, config in AGENTS.items():
+        host = config["host"]
+        last_output = get_last_output(host)
+        status = get_agent_status(host)
+        activity = calculate_activity(host)
+
+        if status == "active":
+            active_count += 1
+            status_symbol = f"{Colors.GREEN}●{Colors.RESET}"
+        else:
+            inactive_count += 1
+            status_symbol = f"{Colors.RED}●{Colors.RESET}"
+
+        print(f"  {status_symbol} {config['name']:<15} {config['role']:<12} {last_output or 'No output':<30} [{activity:3d}]")
+        total_activity += activity
+
+    print()
+    print(f"{Colors.BLUE}Summary:{Colors.RESET}")
+    print(f"  {Colors.GREEN}Active:{Colors.RESET}   {active_count}")
+    print(f"  {Colors.RED}Inactive:{Colors.RESET} {inactive_count}")
+    if active_count + inactive_count > 0:
+        avg_activity = total_activity / (active_count + inactive_count)
+        print(f"  Avg Activity:  {avg_activity:.1f}/100")
+    print()
 
 
 def main():
@@ -238,6 +301,13 @@ def main():
 
     parser = argparse.ArgumentParser(
         description="Update squad dashboard data.json"
+    )
+    parser.add_argument(
+        "action",
+        choices=['update', 'status'],
+        nargs='?',
+        default='update',
+        help="Action: 'update' to refresh data.json, 'status' to show agent status"
     )
     parser.add_argument(
         "--output",
@@ -254,15 +324,18 @@ def main():
     )
     args = parser.parse_args()
 
-    print("=" * 50)
-    print("Squad Dashboard Data Updater")
+    if args.action == "status":
+        show_status()
+        sys.exit(0)
+
+    print(f"{Colors.BOLD}Squad Dashboard Data Updater{Colors.RESET}")
     print("=" * 50)
     print()
 
     success = update_data_json(args.output, args.agents)
 
     if success:
-        print("\nDashboard will show updated data on next refresh")
+        print(f"\n{Colors.BLUE}Dashboard will show updated data on next refresh{Colors.RESET}")
         sys.exit(0)
     else:
         sys.exit(1)
