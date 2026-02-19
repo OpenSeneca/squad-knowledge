@@ -9,8 +9,16 @@ Concise operational state. Detailed notes in `learnings/`.
 
 ## Current Projects
 - **Squad Dashboard** — Fully automated deployment + data collection (READY to deploy, waiting on SSH access to forge)
-- CLI tools and utilities (16 tools deployed, see workspace/tools/)
-- GitHub: OpenSeneca org
+- CLI tools and utilities (17 tools deployed, see workspace/tools/)
+- GitHub: OpenSeneca org (3 tools published)
+
+## GitHub Published Tools (OpenSeneca Org)
+1. **paper-summarizer** - https://github.com/OpenSeneca/paper-summarizer
+   - Summarize arXiv papers and articles (305 lines, MIT)
+2. **squad-eval** - https://github.com/OpenSeneca/squad-eval
+   - Role-specific agent evaluation metrics (452 lines, MIT)
+3. **blog-assistant** - https://github.com/OpenSeneca/blog-assistant
+   - Generate blog outlines in Run Data Run style (358 lines, MIT)
 
 ## Search Tool Hierarchy
 1. **SearXNG** (`websearch`) — FREE, default for research.
@@ -49,8 +57,9 @@ Concise operational state. Detailed notes in `learnings/`.
 2. **GitHub Publication Packages** — 4 tools (claude-code-analyzer, dns, fhash, archive)
 3. **OpenClaw Session Analyzer** — Session log parser
 4. **Blog Publisher** — Substack/Obsidian formatter
+5. **research-digest** (2026-02-19) — Squad research extraction CLI
 
-**Total:** 16 tools, 2 dashboards (MVP + Realtime), 34 commits, ~280KB+ of code/docs
+**Total:** 17 tools, 2 dashboards (MVP + Realtime), 3 published to GitHub, 40+ commits, ~300KB+ of code/docs
 
 **Squad Dashboard Enhancements (2026-02-18):**
 - deploy-forge.sh — Automated deployment script with PM2 integration
