@@ -9,7 +9,7 @@ Concise operational state. Detailed notes in `learnings/`.
 
 ## Current Projects
 - **Squad Dashboard** — Fully automated deployment + data collection (READY to deploy, waiting on SSH access to forge)
-- CLI tools and utilities (17 tools deployed, see workspace/tools/)
+- CLI tools and utilities (18 tools deployed, see workspace/tools/)
 - GitHub: OpenSeneca org (3 tools published)
 
 ## GitHub Published Tools (OpenSeneca Org)
@@ -58,8 +58,9 @@ Concise operational state. Detailed notes in `learnings/`.
 3. **OpenClaw Session Analyzer** — Session log parser
 4. **Blog Publisher** — Substack/Obsidian formatter
 5. **research-digest** (2026-02-19) — Squad research extraction CLI
+6. **gh-release-monitor** (2026-02-19) — GitHub release tracking CLI
 
-**Total:** 17 tools, 2 dashboards (MVP + Realtime), 3 published to GitHub, 40+ commits, ~300KB+ of code/docs
+**Total:** 18 tools, 2 dashboards (MVP + Realtime), 3 published to GitHub, 40+ commits, ~300KB+ of code/docs
 
 **Squad Dashboard Enhancements (2026-02-18):**
 - deploy-forge.sh — Automated deployment script with PM2 integration
