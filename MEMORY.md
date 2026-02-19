@@ -89,6 +89,7 @@ Concise operational state. Detailed notes in `learnings/`.
 - ✅ squad-learnings ready (Squad learnings aggregation)
 - ✅ research-digest ready (Research content extraction)
 - ✅ gh-release-monitor ready (GitHub release tracking)
+- ✅ tools/README.md ready (Central index of all tools)
 - ⏳ Squad Dashboard deployment to forge blocked (SSH access issues)
 - ⏳ Twitter-post ready (needs X_BEARER_TOKEN on lobster-1)
 
