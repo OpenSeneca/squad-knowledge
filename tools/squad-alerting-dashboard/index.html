@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Squad Alerting Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header h1 { margin: 0; font-size: 24px; }
+        .header p { margin: 5px 0 0; opacity: 0.9; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: #2d2d37;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #3d3d4a;
+        }
+        .stat-card h2 {
+            font-size: 32px;
+            margin: 0;
+            color: #667eea;
+        }
+        .stat-card p {
+            font-size: 14px;
+            color: #888;
+            margin: 5px 0 0;
+        }
+        .section {
+            background: #2d2d37;
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 1px solid #3d3d4a;
+        }
+        .section h2 {
+            margin-top: 0;
+            margin-bottom: 20px;
+            color: #e0e0e0;
+        }
+        .alert-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        .alert-table th,
+        .alert-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #3d3d4a;
+        }
+        .alert-table th {
+            background: #3d3d4a;
+            font-weight: 600;
+            color: #fff;
+        }
+        .alert-table tr:hover {
+            background: #1f1f2e;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-critical {
+            background: #e74c3c;
+            color: white;
+        }
+        .badge-warning {
+            background: #f59e0b;
+            color: white;
+        }
+        .badge-info {
+            background: #667eea;
+            color: white;
+        }
+        .timestamp {
+            color: #888;
+            font-size: 12px;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px;
+            color: #888;
+        }
+        .refresh-info {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚨 Squad Alerting Dashboard</h1>
+            <p>Real-time monitoring for OpenSeneca squad agents</p>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <h2 id="active-alerts">0</h2>
+                <p>Active Alerts</p>
+            </div>
+            <div class="stat-card">
+                <h2 id="total-alerts">0</h2>
+                <p>Total Today</p>
+            </div>
+            <div class="stat-card">
+                <h2 id="last-check">Never</h2>
+                <p>Last Check</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📋 Current Alerts</h2>
+            <div id="alerts-container">
+                <div class="empty-state">
+                    <p>Monitoring system starting...</p>
+                    <p class="timestamp">Run <code>squad-alerts --daemon</code> to begin monitoring</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📊 Recent Alert History</h2>
+            <table class="alert-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Severity</th>
+                        <th>Type</th>
+                        <th>Agent</th>
+                        <th>Message</th>
+                    </tr>
+                </thead>
+                <tbody id="history-container">
+                    <tr>
+                        <td colspan="5" class="empty-state">
+                            <p>No alert history yet</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="refresh-info">
+            <p>Auto-refreshing every 30 seconds...</p>
+            <p class="timestamp">Last updated: <span id="last-updated">-</span></p>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const ALERT_HISTORY_FILE = '/tmp/squad-alerts-history.json';
+        const REFRESH_INTERVAL = 30000; // 30 seconds
+
+        // Severity colors
+        const SEVERITY_COLORS = {
+            'critical': '#e74c3c',
+            'warning': '#f59e0b',
+            'info': '#667eea'
+        };
+
+        // Load alert history from file
+        function loadAlerts() {
+            try {
+                const response = fetch('/squad-alerts-history.json', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                return response.then(r => r.json());
+            } catch (error) {
+                console.error('Failed to load alerts:', error);
+                return Promise.resolve({ alerts: [], stats: {} });
+            }
+        }
+
+        // Display alerts
+        function displayAlerts(alerts, stats) {
+            const activeContainer = document.getElementById('alerts-container');
+            const historyContainer = document.getElementById('history-container');
+
+            // Update stats
+            if (stats) {
+                document.getElementById('active-alerts').textContent = stats.active || 0;
+                document.getElementById('total-alerts').textContent = stats.totalToday || 0;
+                document.getElementById('last-check').textContent = stats.lastCheck || 'Never';
+            }
+
+            // Display active alerts
+            if (alerts && alerts.length > 0) {
+                const activeAlerts = alerts.filter(a => !a.resolved);
+                if (activeAlerts.length > 0) {
+                    activeContainer.innerHTML = activeAlerts.map(alert => `
+                        <table class="alert-table">
+                            <tr>
+                                <td><span class="timestamp">${new Date(alert.timestamp).toLocaleString()}</span></td>
+                                <td><span class="badge badge-${alert.severity}">${alert.severity.toUpperCase()}</span></td>
+                                <td>${alert.type}</td>
+                                <td>${alert.agent || 'Squad'}</td>
+                                <td>${alert.message}</td>
+                            </tr>
+                        </table>
+                    `).join('');
+                } else {
+                    activeContainer.innerHTML = '<div class="empty-state"><p>✅ No active alerts</p></div>';
+                }
+
+                // Display history
+                historyContainer.innerHTML = alerts.map(alert => `
+                    <tr>
+                        <td><span class="timestamp">${new Date(alert.timestamp).toLocaleString()}</span></td>
+                        <td><span class="badge badge-${alert.severity}">${alert.severity.toUpperCase()}</span></td>
+                        <td>${alert.type}</td>
+                        <td>${alert.agent || 'Squad'}</td>
+                        <td>${alert.message}${alert.resolved ? ' <span style="color: #888;">(resolved)</span>' : ''}</td>
+                    </tr>
+                `).join('');
+            } else {
+                activeContainer.innerHTML = '<div class="empty-state"><p>Monitoring system starting...</p><p class="timestamp">Run <code>squad-alerts --daemon</code> to begin monitoring</p></div>';
+            }
+
+            // Update last updated time
+            document.getElementById('last-updated').textContent = new Date().toLocaleString();
+        }
+
+        // Main update function
+        function update() {
+            loadAlerts().then(data => {
+                displayAlerts(data.alerts || [], data.stats || {});
+            }).catch(error => {
+                console.error('Update failed:', error);
+            });
+        }
+
+        // Initial load
+        update();
+
+        // Auto-refresh
+        setInterval(update, REFRESH_INTERVAL);
+
+        // Manual refresh on click
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('refresh-info')) {
+                update();
+            }
+        });
+    </script>
+</body>
+</html>
