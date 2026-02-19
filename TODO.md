@@ -74,6 +74,8 @@
 - research-extractor, squad-stats, squad-eval, competitor-tracker
 - **research-digest CLI** (2026-02-19) - Squad research extraction tool
 - **GitHub Publisher** (2026-02-19) - Published 3 tools to OpenSeneca org
+- **gh-release-monitor** (2026-02-19) - GitHub release tracking CLI
+- **dupe-finder** (2026-02-19) - Duplicate file detection and cleanup CLI
 
 ## Rules
 - Build things with a clear user (Seneca, Justin, the squad)
