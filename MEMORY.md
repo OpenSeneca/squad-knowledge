@@ -9,8 +9,8 @@ Concise operational state. Detailed notes in `learnings/`.
 
 ## Current Projects
 - **Squad Dashboard** — Fully automated deployment + data collection (READY to deploy, waiting on SSH access to forge)
-- CLI tools and utilities (19 tools deployed, see workspace/tools/)
-- GitHub: OpenSeneca org (3 tools published)
+- CLI tools and utilities (20 tools deployed, see workspace/tools/)
+- GitHub: OpenSeneca org (4 tools published)
 
 ## GitHub Published Tools (OpenSeneca Org)
 1. **paper-summarizer** - https://github.com/OpenSeneca/paper-summarizer
@@ -19,6 +19,8 @@ Concise operational state. Detailed notes in `learnings/`.
    - Role-specific agent evaluation metrics (452 lines, MIT)
 3. **blog-assistant** - https://github.com/OpenSeneca/blog-assistant
    - Generate blog outlines in Run Data Run style (358 lines, MIT)
+4. **gh-agentics-helper** - https://github.com/OpenSeneca/gh-agentics-helper
+   - GitHub Agentic Workflows setup CLI with 4 templates (4,630 lines, MIT)
 
 ## Search Tool Hierarchy
 1. **SearXNG** (`websearch`) — FREE, default for research.
@@ -60,8 +62,9 @@ Concise operational state. Detailed notes in `learnings/`.
 5. **research-digest** (2026-02-19) — Squad research extraction CLI
 6. **gh-release-monitor** (2026-02-19) — GitHub release tracking CLI
 7. **dupe-finder** (2026-02-19) — Duplicate file detection and cleanup CLI
+8. **gh-agentics-helper** (2026-02-19) — GitHub Agentic Workflows setup CLI with 4 templates
 
-**Total:** 19 tools, 2 dashboards (MVP + Realtime), 3 published to GitHub, 40+ commits, ~300KB+ of code/docs
+**Total:** 20 tools, 2 dashboards (MVP + Realtime), 4 published to GitHub, 40+ commits, ~300KB+ of code/docs
 
 **Squad Dashboard Enhancements (2026-02-18):**
 - deploy-forge.sh — Automated deployment script with PM2 integration
@@ -69,6 +72,12 @@ Concise operational state. Detailed notes in `learnings/`.
 - Quick start guide — Comprehensive reference for all 16 tools
 
 **Deployment Status:**
-- ✅ All 16 CLI tools deployed (symlinked to ~/.local/bin/)
+- ✅ All 20 CLI tools deployed (symlinked to ~/.local/bin/)
 - ✅ Squad Dashboard production-ready (waiting SSH access to forge)
+- ✅ gh-agentics-helper ready (GitHub Agentic Workflows setup for all repos)
 - ⏳ Twitter-post ready (needs X_BEARER_TOKEN on lobster-1)
+
+**SSH Access Issues (2026-02-19):**
+- SSH to forge (100.93.69.117) - Permission denied
+- SSH to argus-squad (100.108.219.91) - Permission denied/Host key verification
+- Need to resolve SSH keys or use alternative deployment method
