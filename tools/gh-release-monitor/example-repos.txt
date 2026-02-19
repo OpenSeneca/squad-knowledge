@@ -1,0 +1,19 @@
+# AI SDKs
+openai/openai-python
+anthropic/anthropic-sdk-python
+cohere-ai/cohere-python
+
+# AI Frameworks
+langchain-ai/langchain
+microsoft/semantic-kernel
+FlowiseAI/Flowise
+
+# LLM Tools
+huggingface/transformers
+openai/whisper
+microsoft/autogen
+
+# RAG & Search
+langchain-ai/langchainjs
+weaviate/weaviate
+qdrant/qdrant
