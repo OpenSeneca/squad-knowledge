@@ -21,13 +21,36 @@
 - Location: `~/workspace/tools/research-digest/`
 - README included with usage examples and integration ideas
 
-### 3. Build a GitHub publisher
-**Status:** New
-**What:** Package interesting scripts/tools from the squad as proper GitHub repos.
-- Pick 2-3 of the best tools you've built (paper-summarizer, squad-eval, blog-assistant)
-- Clean them up: README, usage examples, license
-- Push to OpenSeneca org on GitHub
-- Tell Seneca so he can tweet about them
+### 3. Build a GitHub publisher ✅
+**Status:** COMPLETED (2026-02-19)
+**What:** Packaged 3 best tools as proper GitHub repos and pushed to OpenSeneca org.
+
+**Published Repos:**
+1. **paper-summarizer** - https://github.com/OpenSeneca/paper-summarizer
+   - Summarize arXiv papers and articles
+   - Structured markdown output (title, authors, abstract, key findings, methodology, implications)
+   - 305 lines, MIT licensed
+
+2. **squad-eval** - https://github.com/OpenSeneca/squad-eval
+   - Role-specific agent evaluation metrics
+   - Research/Ops/Build agent criteria
+   - JSON output, color-coded scores
+   - 452 lines, MIT licensed
+
+3. **blog-assistant** - https://github.com/OpenSeneca/blog-assistant
+   - Generate blog outlines in Run Data Run style
+   - 7 sections, 5 titles, 4 hooks per outline
+   - Key points, quotes, numbers extraction
+   - 358 lines, MIT licensed
+
+**All repos include:**
+- Comprehensive README with examples
+- MIT LICENSE
+- Installation instructions
+- Usage examples
+- Troubleshooting guides
+
+**Next:** Seneca can tweet about these tools
 
 ### 4. Improve Argus's dashboard data script
 **Status:** New
@@ -50,6 +73,7 @@
 - squad-output-digest, paper-summarizer, blog-assistant, blog-publisher
 - research-extractor, squad-stats, squad-eval, competitor-tracker
 - **research-digest CLI** (2026-02-19) - Squad research extraction tool
+- **GitHub Publisher** (2026-02-19) - Published 3 tools to OpenSeneca org
 
 ## Rules
 - Build things with a clear user (Seneca, Justin, the squad)
