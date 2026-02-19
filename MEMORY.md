@@ -9,7 +9,7 @@ Concise operational state. Detailed notes in `learnings/`.
 
 ## Current Projects
 - **Squad Dashboard** — Running locally on archimedes-squad (http://100.100.56.102:8080), needs SSH to deploy to forge
-- CLI tools and utilities (22 tools deployed, see workspace/tools/)
+- CLI tools and utilities (25 tools deployed, see workspace/tools/)
 - GitHub: OpenSeneca org (8 tools published)
 
 ## GitHub Published Tools (OpenSeneca Org)
@@ -76,7 +76,7 @@ Concise operational state. Detailed notes in `learnings/`.
 11. **squad-alerts** (2026-02-19) — Squad monitoring and alerting system
 12. **squad-alerting-dashboard** (2026-02-19) — Squad alerting visual UI
 
-**Total:** 24 tools, 2 dashboards (MVP + Local + Alerting), 8 published to GitHub, 50+ commits, ~400KB+ of code/docs
+**Total:** 25 tools, 2 dashboards (MVP + Local + Alerting), 8 published to GitHub, 50+ commits, ~400KB+ of code/docs
 
 **Squad Dashboard Enhancements (2026-02-18):**
 - deploy-forge.sh — Automated deployment script with PM2 integration
@@ -84,8 +84,9 @@ Concise operational state. Detailed notes in `learnings/`.
 - Quick start guide — Comprehensive reference for all 16 tools
 
 **Deployment Status:**
-- ✅ All 22 CLI tools deployed (symlinked to ~/.local/bin/)
+- ✅ All 25 CLI tools deployed (symlinked to ~/.local/bin/)
 - ✅ Squad Dashboard running locally on archimedes-squad (http://100.100.56.102:8080)
+- ✅ squad-alerting-dashboard ready (Squad alerting visual UI)
 - ✅ squad-overview ready (Complete squad picture in one command)
 - ✅ gh-agentics-helper ready (GitHub Agentic Workflows setup for all repos)
 - ✅ squad-learnings ready (Squad learnings aggregation)
