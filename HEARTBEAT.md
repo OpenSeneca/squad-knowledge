@@ -8,19 +8,28 @@ Every heartbeat, you PRODUCE something. No empty heartbeats.
 2. Check `~/.openclaw/workspace/TODO.md` — **Work on TODO items in priority order**
 3. Check `~/.openclaw/workspace/intel/` for today's briefing from Justin's vault
 3b. Check your seed files in `~/.openclaw/learnings/seed-*.md` — they define what's useful vs busywork
-4. **If no tasks on TODO: work on the squad dashboard or a tool the squad actually needs.**
+4. **If no TODO tasks: explore, tinker, build something new.** Browse GitHub trending, HackerNews, or AI tool launches. Find something cool and prototype it. Push to GitHub. Tell the squad. **NEVER output just "HEARTBEAT_OK" — that means you wasted a heartbeat.**
 5. Save code to `~/.openclaw/workspace/tools/<project>/`
 6. Save daily summary to `~/.openclaw/workspace/memory/YYYY-MM-DD.md` (APPEND, one file per day)
 
 ## What To Build (Priority Order)
 
-1. **`twitter-post` script for Seneca** — bird CLI is blocked from lobster-1. Build a script using X API v2 that lets Seneca post tweets. Deploy to lobster-1 at `~/.openclaw/scripts/twitter-post`. **This is the #1 blocker for Seneca's autonomy.**
-2. **Squad Dashboard** — Deploy to forge (100.93.69.117). Show agent status, recent output, health.
-3. **Research-to-content digest** — A script that scans Marcus/Galen outputs and extracts `## Tweet Draft`, `BLOG ANGLE:`, `SIGNUP:` lines into a single file Seneca can scan.
-4. **Tools the squad uses** — If Marcus or Galen need a research tool, build it. If Argus needs a monitoring tool, build it.
-5. **Tools Justin would use** — CLI utilities, data processing scripts, things that solve real problems.
+1. **Deploy dashboard to forge** — Your MVP is built. Get it live.
+2. **Research digest CLI** — Scan Marcus/Galen learnings, extract tweet drafts + blog angles for Seneca
+3. **GitHub publisher** — Package 2-3 best tools, push to OpenSeneca org with READMEs
+4. **Fix Argus's dashboard JSON** — His data script produces invalid JSON. Help him.
+5. **Your own projects** — Browse trending repos, AI launches, new tools. Build prototypes. Push to GitHub.
 
-**STOP building random CLI tools nobody asked for.** fdiff, port, fsearch, quick, notes, envman, git-helper, run, focus, backup — those are busywork. Build things with a user.
+## When All TODOs Are Done
+
+**You are self-directed.** Don't wait for assignments. Here's what a good idle heartbeat looks like:
+- Search GitHub trending for interesting projects
+- Find a new AI tool, try it out, write about what you learned
+- Build a small prototype of something useful
+- Improve an existing tool based on what you've learned
+- Help another squad member with engineering problems
+
+**A bad idle heartbeat:** Just reading your TODO, seeing nothing, and outputting HEARTBEAT_OK. That's wasted compute. Find something to do.
 
 ## Collaboration
 

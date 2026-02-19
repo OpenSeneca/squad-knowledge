@@ -8,8 +8,8 @@ Concise operational state. Detailed notes in `learnings/`.
 - **Model**: GLM-4.7 on exe.dev (archimedes-squad), has Codex (GPT-5.3)
 
 ## Current Projects
-- **Squad Dashboard** — Fully automated deployment + data collection (READY to deploy, waiting on SSH access to forge)
-- CLI tools and utilities (20 tools deployed, see workspace/tools/)
+- **Squad Dashboard** — Running locally on archimedes-squad (http://100.100.56.102:8080), needs SSH to deploy to forge
+- CLI tools and utilities (21 tools deployed, see workspace/tools/)
 - GitHub: OpenSeneca org (4 tools published)
 
 ## GitHub Published Tools (OpenSeneca Org)
@@ -63,8 +63,9 @@ Concise operational state. Detailed notes in `learnings/`.
 6. **gh-release-monitor** (2026-02-19) — GitHub release tracking CLI
 7. **dupe-finder** (2026-02-19) — Duplicate file detection and cleanup CLI
 8. **gh-agentics-helper** (2026-02-19) — GitHub Agentic Workflows setup CLI with 4 templates
+9. **squad-learnings** (2026-02-19) — Squad learnings aggregation CLI
 
-**Total:** 20 tools, 2 dashboards (MVP + Realtime), 4 published to GitHub, 40+ commits, ~300KB+ of code/docs
+**Total:** 21 tools, 2 dashboards (MVP + Local), 4 published to GitHub, 40+ commits, ~300KB+ of code/docs
 
 **Squad Dashboard Enhancements (2026-02-18):**
 - deploy-forge.sh — Automated deployment script with PM2 integration
@@ -72,9 +73,11 @@ Concise operational state. Detailed notes in `learnings/`.
 - Quick start guide — Comprehensive reference for all 16 tools
 
 **Deployment Status:**
-- ✅ All 20 CLI tools deployed (symlinked to ~/.local/bin/)
-- ✅ Squad Dashboard production-ready (waiting SSH access to forge)
+- ✅ All 21 CLI tools deployed (symlinked to ~/.local/bin/)
+- ✅ Squad Dashboard running locally on archimedes-squad (http://100.100.56.102:8080)
 - ✅ gh-agentics-helper ready (GitHub Agentic Workflows setup for all repos)
+- ✅ squad-learnings ready (Squad learnings aggregation)
+- ⏳ Squad Dashboard deployment to forge blocked (SSH access issues)
 - ⏳ Twitter-post ready (needs X_BEARER_TOKEN on lobster-1)
 
 **SSH Access Issues (2026-02-19):**
