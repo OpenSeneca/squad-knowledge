@@ -76,8 +76,9 @@ Concise operational state. Detailed notes in `learnings/`.
 11. **squad-alerts** (2026-02-19) — Squad monitoring and alerting system
 12. **squad-alerting-dashboard** (2026-02-19) — Squad alerting visual UI
 13. **squad-export** (2026-02-20) — Unified squad data export for AionUi integration
+14. **forge-dashboard** (2026-02-20) — Centralized squad dashboard on forge1:3000 (CRITICAL TASK)
 
-**Total:** 26 tools, 2 dashboards (MVP + Local + Alerting), 8 published to GitHub, 50+ commits, ~420KB+ of code/docs
+**Total:** 27 tools, 3 dashboards (MVP + Local + Alerting + Forge), 8 published to GitHub, 50+ commits, ~440KB+ of code/docs
 
 **Squad Dashboard Enhancements (2026-02-18):**
 - deploy-forge.sh — Automated deployment script with PM2 integration
