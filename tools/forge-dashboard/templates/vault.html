@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forge Dashboard - Vault</title>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>🏗️ Forge Dashboard</h1>
+            <nav>
+                <a href="/">Squad Status</a>
+                <a href="/tasks">Tasks</a>
+                <a href="/vault" class="active">Vault</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Upload Form -->
+        <div class="card">
+            <div class="card-header">
+                <h2>📤 Upload File</h2>
+            </div>
+
+            <form id="upload-form" enctype="multipart/form-data" onsubmit="handleUpload(event)">
+                <div class="form-group">
+                    <label for="file">Select File</label>
+                    <input type="file" id="file" name="file" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Upload</button>
+            </form>
+        </div>
+
+        <!-- File List -->
+        <div class="card">
+            <div class="card-header">
+                <h2>📁 Uploaded Files</h2>
+                <span id="files-count" class="badge badge-secondary">Loading...</span>
+            </div>
+
+            <div id="file-list">
+                <div class="loading">Loading files...</div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/static/js/dashboard.js"></script>
+    <script>
+        // Page-specific initialization
+        async function initPage() {
+            await loadFiles();
+        }
+
+        async function loadFiles() {
+            try {
+                // Since we don't have a list API yet, just show a message
+                document.getElementById('file-list').innerHTML = `
+                    <p class="text-center">
+                        <strong>Vault is ready for file uploads.</strong><br>
+                        Upload files using the form above.<br>
+                        Files will be stored in the uploads directory on the server.
+                    </p>
+                `;
+
+                document.getElementById('files-count').textContent = 'Ready';
+            } catch (error) {
+                console.error('Error loading files:', error);
+                document.getElementById('file-list').innerHTML = `<p class="text-center text-danger">Error loading files: ${error.message}</p>`;
+            }
+        }
+
+        async function handleUpload(event) {
+            event.preventDefault();
+
+            const form = event.target;
+            const formData = new FormData(form);
+            const submitButton = form.querySelector('button[type="submit"]');
+
+            try {
+                submitButton.disabled = true;
+                submitButton.textContent = 'Uploading...';
+
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Upload failed');
+                }
+
+                const result = await response.json();
+
+                showNotification(`File uploaded successfully: ${result.filename}`, 'success');
+                form.reset();
+
+                // Reload file list if we had a list API
+                // await loadFiles();
+
+            } catch (error) {
+                console.error('Upload error:', error);
+                showNotification(error.message, 'error');
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Upload';
+            }
+        }
+
+        // Initialize on page load
+        initPage();
+    </script>
+</body>
+</html>

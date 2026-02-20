@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forge Dashboard - Squad Status</title>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>🏗️ Forge Dashboard</h1>
+            <nav>
+                <a href="/" class="active">Squad Status</a>
+                <a href="/tasks">Tasks</a>
+                <a href="/vault">Vault</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="card">
+            <div class="card-header">
+                <h2>👥 Squad Status</h2>
+                <span id="last-updated">Loading...</span>
+            </div>
+
+            <div id="squad-status">
+                <div class="loading">Loading squad status...</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>📚 Recent Learnings</h2>
+            </div>
+
+            <div id="learnings">
+                <div class="loading">Loading learnings...</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>🛠️ Tools Inventory</h2>
+                <span id="tools-count">Loading...</span>
+            </div>
+
+            <div id="tools">
+                <div class="loading">Loading tools...</div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/static/js/dashboard.js"></script>
+    <script>
+        // Page-specific initialization
+        const currentFilters = {};
+
+        async function initPage() {
+            await loadSquadStatus();
+            await loadLearnings();
+            await loadTools();
+        }
+
+        async function loadSquadStatus() {
+            const data = await fetchSquadStatus();
+
+            if (data && data.squad && data.squad.agents) {
+                const agents = data.squad.agents;
+
+                const statusHtml = renderAgentStatusTable(agents);
+                document.getElementById('squad-status').innerHTML = statusHtml;
+
+                document.getElementById('last-updated').textContent =
+                    `Updated: ${new Date(data.timestamp).toLocaleString()}`;
+            }
+        }
+
+        async function loadLearnings() {
+            const data = await fetchSquadStatus();
+
+            if (data && data.squad && data.squad.learnings) {
+                const learnings = data.squad.learnings;
+
+                if (learnings.length === 0) {
+                    document.getElementById('learnings').innerHTML = '<p class="text-center">No recent learnings</p>';
+                    return;
+                }
+
+                const learningsHtml = learnings.slice(0, 10).map(learning => {
+                    const agentBadge = learning.agent
+                        ? `<span class="badge badge-secondary">[${learning.agent}]</span>`
+                        : '';
+
+                    return `
+                        <div class="task-card">
+                            <div class="card-header">
+                                <small>${learning.date} ${agentBadge}</small>
+                            </div>
+                            <p><strong>${learning.filename}</strong></p>
+                            <p class="notes">${learning.preview || 'No preview available'}</p>
+                        </div>
+                    `;
+                }).join('');
+
+                document.getElementById('learnings').innerHTML = learningsHtml;
+            }
+        }
+
+        async function loadTools() {
+            const data = await fetchSquadStatus();
+
+            if (data && data.squad && data.squad.tools) {
+                const tools = data.squad.tools;
+
+                document.getElementById('tools-count').textContent = `${tools.length} tools`;
+
+                if (tools.length === 0) {
+                    document.getElementById('tools').innerHTML = '<p class="text-center">No tools found</p>';
+                    return;
+                }
+
+                const toolsHtml = tools.slice(0, 20).map(tool => {
+                    const readmeBadge = tool.has_readme
+                        ? '<span class="badge badge-success">📖 README</span>'
+                        : '<span class="badge badge-secondary">No README</span>';
+
+                    const lang = tool.python_count > 0 ? 'Python' : tool.bash_count > 0 ? 'Bash' : 'Other';
+
+                    return `
+                        <div style="padding: 10px; border-bottom: 1px solid var(--border-color);">
+                            <strong>${tool.name}</strong>
+                            <div class="flex mt-4">
+                                <span>${readmeBadge}</span>
+                                <span class="badge badge-secondary">${lang}</span>
+                                <span class="badge badge-secondary">${tool.python_count + tool.bash_count} files</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                document.getElementById('tools').innerHTML = toolsHtml;
+            }
+        }
+
+        // Override event handler
+        onSquadStatusUpdate = (data) => {
+            console.log('Squad status updated, refreshing...');
+            loadSquadStatus();
+            loadLearnings();
+            loadTools();
+        };
+
+        // Initialize on page load
+        initPage();
+    </script>
+</body>
+</html>

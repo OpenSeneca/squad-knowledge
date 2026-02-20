@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forge Dashboard - Task Board</title>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>🏗️ Forge Dashboard</h1>
+            <nav>
+                <a href="/">Squad Status</a>
+                <a href="/tasks" class="active">Tasks</a>
+                <a href="/vault">Vault</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Create Task Form -->
+        <div class="card">
+            <div class="card-header">
+                <h2>➕ Create Task</h2>
+            </div>
+
+            <form id="create-task-form" onsubmit="handleCreateTask(event)">
+                <div class="form-group">
+                    <label for="title">Title *</label>
+                    <input type="text" id="title" name="title" required placeholder="Task title">
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea id="description" name="description" placeholder="Task description..."></textarea>
+                </div>
+
+                <div class="grid">
+                    <div class="form-group">
+                        <label for="priority">Priority *</label>
+                        <select id="priority" name="priority" required>
+                            <option value="">Select priority</option>
+                            <option value="critical">🔴 Critical</option>
+                            <option value="high">🟠 High</option>
+                            <option value="medium">🟡 Medium</option>
+                            <option value="low">🟢 Low</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="assigned_agent">Assign To</label>
+                        <select id="assigned_agent" name="assigned_agent">
+                            <option value="all">👥 All Agents</option>
+                            <option value="archimedes">🔧 Archimedes</option>
+                            <option value="marcus">📚 Marcus</option>
+                            <option value="galen">📚 Galen</option>
+                            <option value="argus">🔍 Argus</option>
+                            <option value="seneca">📋 Seneca</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Create Task</button>
+            </form>
+        </div>
+
+        <!-- Filters -->
+        <div class="card">
+            <div class="card-header">
+                <h2>🔍 Filters</h2>
+            </div>
+
+            <div class="grid">
+                <div class="form-group">
+                    <label for="filter-status">Status</label>
+                    <select id="filter-status" onchange="applyFilters()">
+                        <option value="">All Statuses</option>
+                        <option value="in-progress">🔄 In Progress</option>
+                        <option value="completed">✅ Completed</option>
+                        <option value="blocked">🚫 Blocked</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="filter-priority">Priority</label>
+                    <select id="filter-priority" onchange="applyFilters()">
+                        <option value="">All Priorities</option>
+                        <option value="critical">🔴 Critical</option>
+                        <option value="high">🟠 High</option>
+                        <option value="medium">🟡 Medium</option>
+                        <option value="low">🟢 Low</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="filter-agent">Agent</label>
+                    <select id="filter-agent" onchange="applyFilters()">
+                        <option value="">All Agents</option>
+                        <option value="archimedes">🔧 Archimedes</option>
+                        <option value="marcus">📚 Marcus</option>
+                        <option value="galen">📚 Galen</option>
+                        <option value="argus">🔍 Argus</option>
+                        <option value="seneca">📋 Seneca</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="display: flex; align-items: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="resetFilters()">Reset Filters</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Task Lists -->
+        <div class="grid">
+            <div class="card">
+                <div class="card-header">
+                    <h2>🔄 In Progress</h2>
+                    <span id="in-progress-count" class="badge badge-secondary">0</span>
+                </div>
+                <div id="in-progress-tasks">
+                    <div class="loading">Loading tasks...</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2>✅ Completed</h2>
+                </div>
+                <div id="completed-tasks">
+                    <div class="loading">Loading tasks...</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2>🚫 Blocked</h2>
+                </div>
+                <div id="blocked-tasks">
+                    <div class="loading">Loading tasks...</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/static/js/dashboard.js"></script>
+    <script>
+        // Page-specific initialization
+        let currentFilters = {};
+
+        async function initPage() {
+            await loadTasks();
+        }
+
+        async function loadTasks() {
+            const taskList = await fetchTasks(currentFilters);
+
+            // Filter tasks by status
+            const inProgress = taskList.filter(t => t.status === 'in-progress');
+            const completed = taskList.filter(t => t.status === 'completed');
+            const blocked = taskList.filter(t => t.status === 'blocked');
+
+            // Render task lists
+            renderTasksList(inProgress, 'in-progress-tasks');
+            renderTasksList(completed, 'completed-tasks');
+            renderTasksList(blocked, 'blocked-tasks');
+
+            // Update counts
+            document.getElementById('in-progress-count').textContent = inProgress.length;
+        }
+
+        function applyFilters() {
+            currentFilters = {
+                status: document.getElementById('filter-status').value || undefined,
+                priority: document.getElementById('filter-priority').value || undefined,
+                assignedAgent: document.getElementById('filter-agent').value || undefined
+            };
+
+            loadTasks();
+        }
+
+        function resetFilters() {
+            document.getElementById('filter-status').value = '';
+            document.getElementById('filter-priority').value = '';
+            document.getElementById('filter-agent').value = '';
+
+            currentFilters = {};
+            loadTasks();
+        }
+
+        // Override event handler
+        onTaskCountUpdate = (data) => {
+            document.getElementById('in-progress-count').textContent = data['in-progress'] || 0;
+            loadTasks();
+        };
+
+        // Initialize on page load
+        initPage();
+    </script>
+</body>
+</html>
