@@ -1,0 +1,324 @@
+#!/usr/bin/env node
+/**
+ * Research Note Taker
+ *
+ * A CLI tool for quickly logging research findings.
+ * Takes a topic or URL, extracts content, and saves a structured note.
+ *
+ * Usage:
+ *   research-note "topic" --note "your notes"
+ *   research-note "https://arxiv.org/abs/..." --note "key insights"
+ *   research-note --interactive
+ */
+
+const fs = require('fs').promises;
+const path = require('path');
+const { execSync } = require('child_process');
+const https = require('https');
+const http = require('http');
+
+// ANSI color codes
+const colors = {
+  reset: '\x1b[0m',
+  bright: '\x1b[1m',
+  dim: '\x1b[2m',
+  red: '\x1b[31m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  blue: '\x1b[34m',
+  cyan: '\x1b[36m',
+};
+
+function colorize(text, color) {
+  return `${colors[color]}${text}${colors.reset}`;
+}
+
+// Configuration
+const DEFAULT_RESEARCH_DIR = path.join(process.env.HOME, 'clawd', 'research');
+const NOTE_TEMPLATE = `# {{title}}
+
+## Source
+{{source}}
+
+## Date
+{{date}}
+
+## Notes
+{{notes}}
+
+## Key Points
+{{key_points}}
+
+## Tags
+{{tags}}
+
+---
+Agent: {{agent}}
+Session: {{session}}
+`;
+
+/**
+ * Fetch URL content
+ */
+async function fetchUrl(url) {
+  return new Promise((resolve, reject) => {
+    const protocol = url.startsWith('https') ? https : http;
+
+    protocol.get(url, (res) => {
+      if (res.statusCode !== 200) {
+        reject(new Error(`HTTP ${res.statusCode}`));
+        return;
+      }
+
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => resolve(data));
+    }).on('error', reject);
+  });
+}
+
+/**
+ * Extract title from HTML
+ */
+function extractTitle(html) {
+  const match = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+  return match ? match[1].trim() : 'Untitled';
+}
+
+/**
+ * Sanitize filename
+ */
+function sanitizeFilename(name) {
+  return name
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .substring(0, 50);
+}
+
+/**
+ * Generate note content
+ */
+function generateNote(template, data) {
+  return template
+    .replace('{{title}}', data.title)
+    .replace('{{source}}', data.source)
+    .replace('{{date}}', data.date)
+    .replace('{{notes}}', data.notes)
+    .replace('{{key_points}}', data.key_points || 'N/A')
+    .replace('{{tags}}', data.tags || '')
+    .replace('{{agent}}', data.agent || 'archimedes')
+    .replace('{{session}}', data.session || 'main');
+}
+
+/**
+ * Save note to file
+ */
+async function saveNote(content, researchDir, filename) {
+  await fs.mkdir(researchDir, { recursive: true });
+  const filepath = path.join(researchDir, filename);
+  await fs.writeFile(filepath, content, 'utf8');
+  return filepath;
+}
+
+/**
+ * Interactive mode
+ */
+async function interactiveMode() {
+  console.log(colorize('📝 Research Note Taker - Interactive Mode', 'cyan'));
+  console.log(colorize('Press Enter to use default values\n', 'dim'));
+
+  const readline = require('readline');
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+
+  const question = (prompt, defaultValue = '') => {
+    return new Promise(resolve => {
+      rl.question(
+        defaultValue
+          ? `${prompt} [${colorize(defaultValue, 'dim')}]: `
+          : `${prompt}: `,
+        answer => resolve(answer.trim() || defaultValue)
+      );
+    });
+  };
+
+  try {
+    const topic = await question('Research topic or URL');
+    const notes = await question('Your notes', 'Research notes to be filled');
+    const keyPoints = await question('Key points (comma-separated)', '');
+    const tags = await question('Tags (comma-separated)', 'research');
+
+    rl.close();
+
+    // Check if it's a URL
+    let source = topic;
+    let title = topic;
+    let content = notes;
+
+    if (topic.startsWith('http')) {
+      console.log(colorize('\n🌐 Fetching URL...', 'cyan'));
+      try {
+        const html = await fetchUrl(topic);
+        title = extractTitle(html);
+        source = topic;
+        console.log(colorize(`✓ Fetched: ${title}`, 'green'));
+      } catch (error) {
+        console.log(colorize(`⚠️  Could not fetch URL: ${error.message}`, 'yellow'));
+      }
+    }
+
+    const date = new Date().toISOString().split('T')[0];
+    const filename = `${date}-${sanitizeFilename(title)}.md`;
+
+    const noteData = {
+      title,
+      source,
+      date,
+      notes: content,
+      key_points: keyPoints || 'N/A',
+      tags,
+      agent: 'archimedes',
+      session: 'interactive'
+    };
+
+    const noteContent = generateNote(NOTE_TEMPLATE, noteData);
+    const researchDir = process.env.RESEARCH_DIR || DEFAULT_RESEARCH_DIR;
+    const filepath = await saveNote(noteContent, researchDir, filename);
+
+    console.log(colorize('\n✅ Note saved!', 'green'));
+    console.log(colorize(`📄 ${filepath}`, 'dim'));
+    console.log(colorize(`\n📋 Summary:`, 'cyan'));
+    console.log(`   Title: ${title}`);
+    console.log(`   Source: ${source}`);
+    console.log(`   Tags: ${tags}`);
+  } catch (error) {
+    rl.close();
+    console.error(colorize(`\n❌ Error: ${error.message}`, 'red'));
+    process.exit(1);
+  }
+}
+
+/**
+ * Quick mode (CLI args)
+ */
+async function quickMode(positional, options) {
+  const topic = positional[0];
+  const note = options['note'] || options['n'] || '';
+  const tags = options['tags'] || options['t'] || 'research';
+  const keyPoints = options['keypoints'] || options['k'] || '';
+  const outputDir = options['output'] || options['o'] || DEFAULT_RESEARCH_DIR;
+
+  if (!topic) {
+    console.error(colorize('Error: Please provide a topic or URL', 'red'));
+    console.log('\nUsage:');
+    console.log('  research-note "topic" --note "your notes"');
+    console.log('  research-note "https://arxiv.org/abs/..." --note "key insights"');
+    console.log('  research-note --interactive');
+    process.exit(1);
+  }
+
+  try {
+    console.log(colorize('📝 Creating research note...', 'cyan'));
+
+    // Check if it's a URL
+    let source = topic;
+    let title = topic;
+
+    if (topic.startsWith('http')) {
+      console.log(colorize('🌐 Fetching URL...', 'cyan'));
+      try {
+        const html = await fetchUrl(topic);
+        title = extractTitle(html);
+        source = topic;
+        console.log(colorize(`✓ Fetched: ${title}`, 'green'));
+      } catch (error) {
+        console.log(colorize(`⚠️  Could not fetch URL: ${error.message}`, 'yellow'));
+        console.log(colorize('Using URL as title...', 'dim'));
+      }
+    }
+
+    const date = new Date().toISOString().split('T')[0];
+    const filename = `${date}-${sanitizeFilename(title)}.md`;
+
+    const noteData = {
+      title,
+      source,
+      date,
+      notes: note || 'Research notes to be filled',
+      key_points: keyPoints || 'N/A',
+      tags,
+      agent: 'archimedes',
+      session: 'cli'
+    };
+
+    const noteContent = generateNote(NOTE_TEMPLATE, noteData);
+    const filepath = await saveNote(noteContent, outputDir, filename);
+
+    console.log(colorize('\n✅ Note saved!', 'green'));
+    console.log(colorize(`📄 ${filepath}`, 'dim'));
+    console.log(colorize(`\n📋 Summary:`, 'cyan'));
+    console.log(`   Title: ${title}`);
+    console.log(`   Source: ${source}`);
+    console.log(`   Tags: ${tags}`);
+  } catch (error) {
+    console.error(colorize(`\n❌ Error: ${error.message}`, 'red'));
+    process.exit(1);
+  }
+}
+
+/**
+ * Parse CLI args
+ */
+function parseArgs() {
+  const args = {};
+  const positional = [];
+
+  for (let i = 0; i < process.argv.length; i++) {
+    const arg = process.argv[i];
+
+    if (arg.startsWith('--')) {
+      const key = arg.slice(2).replace(/-./g, m => m[1]);
+      const nextArg = process.argv[i + 1];
+      if (nextArg && !nextArg.startsWith('-')) {
+        args[key] = nextArg;
+        i++;
+      } else {
+        args[key] = true;
+      }
+    } else if (arg.startsWith('-')) {
+      const key = arg.slice(1);
+      const nextArg = process.argv[i + 1];
+      if (nextArg && !nextArg.startsWith('-')) {
+        args[key] = nextArg;
+        i++;
+      } else {
+        args[key] = true;
+      }
+    } else if (i > 1) { // Skip 'node' and script name
+      positional.push(arg);
+    }
+  }
+
+  return { args, positional };
+}
+
+/**
+ * Main handler
+ */
+async function main() {
+  const { args, positional } = parseArgs();
+
+  console.log(colorize('🔷 Research Note Taker', 'cyan'));
+  console.log(colorize('   Quick research logging for the squad\n', 'dim'));
+
+  if (args['interactive'] || args['i'] || positional.length === 0) {
+    await interactiveMode();
+  } else {
+    await quickMode(positional, args);
+  }
+}
+
+main();
