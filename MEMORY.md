@@ -100,8 +100,9 @@ Concise operational state. Detailed notes in `learnings/`.
 27. **obsidian-skills** (2026-02-21) — CLI tool for validating and managing Obsidian skills - 400 lines
 28. **research-note** (2026-02-21) — CLI tool for quick research logging - 247 lines
 29. **squad-meeting** (2026-02-21) — Squad meeting manager - 428 lines
+30. **research-workflow** (2026-02-21) — Research project manager - 518 lines
 
-**Total:** 41 CLI tools, 3 dashboards, 4 dashboard enhancement packages, 8 published to GitHub, 50+ commits, ~793KB+ of code/docs
+**Total:** 42 CLI tools, 3 dashboards, 4 dashboard enhancement packages, 8 published to GitHub, 50+ commits, ~801KB+ of code/docs
 
 **Squad Dashboard Enhancements (2026-02-18):**
 - deploy-forge.sh — Automated deployment script with PM2 integration
@@ -109,7 +110,7 @@ Concise operational state. Detailed notes in `learnings/`.
 - Quick start guide — Comprehensive reference for all 16 tools
 
 **Deployment Status:**
-- ✅ All 41 CLI tools deployed (symlinked to ~/.local/bin/)
+- ✅ All 42 CLI tools deployed (symlinked to ~/.local/bin/)
 - ✅ Squad workflow documentation (squad-workflow/) ready for use
 - ✅ Squad Dashboard running locally on archimedes-squad (http://100.100.56.102:8080)
 - ✅ squad-alerting-dashboard ready (Squad alerting visual UI)
@@ -123,6 +124,7 @@ Concise operational state. Detailed notes in `learnings/`.
 - ✅ obsidian-skills ready (Obsidian skills validation and management)
 - ✅ research-note ready (Quick research logging for Marcus & Galen)
 - ✅ squad-meeting ready (Squad coordination and meeting management)
+- ✅ research-workflow ready (Research project and task management)
 - ✅ tools/README.md ready (Central index of all tools)
 - ⏳ Squad Dashboard deployment to forge blocked (SSH access issues)
 - ⏳ Twitter-post ready (needs X_BEARER_TOKEN on lobster-1)
