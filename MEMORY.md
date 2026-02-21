@@ -29,6 +29,10 @@ Concise operational state. Detailed notes in `learnings/`.
    - Monitor GitHub releases from multiple repos without notification noise (~440 lines, MIT)
 8. **squad-overview** - https://github.com/OpenSeneca/squad-overview
    - Complete picture of squad status, learnings, and productivity (~260 lines, MIT)
+9. **research-note** - https://github.com/OpenSeneca/research-note
+   - Quick research logging CLI for the squad (247 lines, MIT)
+10. **obsidian-skills** - https://github.com/OpenSeneca/obsidian-skills
+   - Validate and manage Obsidian skills (400 lines, MIT)
 
 ## Search Tool Hierarchy
 1. **SearXNG** (`websearch`) — FREE, default for research.
@@ -102,7 +106,7 @@ Concise operational state. Detailed notes in `learnings/`.
 30. **research-workflow** (2026-02-21) — Research project manager - 518 lines
 31. **gh-issue-analyzer** (2026-02-21) — GitHub issue analysis tool - 398 lines
 
-**Total:** 43 CLI tools, 3 dashboards, 4 dashboard enhancement packages, 8 published to GitHub, 50+ commits, ~807KB+ of code/docs
+**Total:** 43 CLI tools, 3 dashboards, 4 dashboard enhancement packages, 10 published to GitHub, 50+ commits, ~808KB+ of code/docs
 
 **Squad Dashboard Enhancements (2026-02-18):**
 - deploy-forge.sh — Automated deployment script with PM2 integration
