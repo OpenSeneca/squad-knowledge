@@ -1,0 +1,501 @@
+#!/usr/bin/env node
+/**
+ * Research Workflow Manager
+ *
+ * A CLI tool for managing research projects and workflows.
+ * Integrates with research-note, research-digest, and squad-meeting.
+ *
+ * Usage:
+ *   research-workflow create --project "AI Agents" --type "ai-research"
+ *   research-workflow add-task --project-id <id> --task "Read Claude-mem paper"
+ *   research-workflow digest --project-id <id>
+ *   research-workflow export --project-id <id>
+ */
+
+const fs = require('fs').promises;
+const path = require('path');
+const crypto = require('crypto');
+const { execSync } = require('child_process');
+
+// ANSI color codes
+const colors = {
+  reset: '\x1b[0m',
+  bright: '\x1b[1m',
+  dim: '\x1b[2m',
+  red: '\x1b[31m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  blue: '\x1b[34m',
+  cyan: '\x1b[36m',
+  magenta: '\x1b[35m',
+};
+
+function colorize(text, color) {
+  return `${colors[color]}${text}${colors.reset}`;
+}
+
+// Configuration
+const DEFAULT_DATA_DIR = path.join(process.env.HOME, '.openclaw', 'research-workflow');
+const DATA_FILE = path.join(DEFAULT_DATA_DIR, 'projects.json');
+
+// Valid project types
+const VALID_TYPES = ['ai-research', 'biopharma', 'competitive-analysis', 'tool-exploration', 'general'];
+
+// Valid task statuses
+const VALID_STATUSES = ['todo', 'in-progress', 'completed', 'blocked'];
+
+/**
+ * Ensure data directory exists
+ */
+async function ensureDataDir() {
+  await fs.mkdir(DEFAULT_DATA_DIR, { recursive: true });
+}
+
+/**
+ * Load projects data
+ */
+async function loadProjects() {
+  await ensureDataDir();
+  try {
+    const data = await fs.readFile(DATA_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    return {
+      projects: [],
+      tasks: []
+    };
+  }
+}
+
+/**
+ * Save projects data
+ */
+async function saveProjects(data) {
+  await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
+}
+
+/**
+ * Generate unique ID
+ */
+function generateId() {
+  return crypto.randomBytes(4).toString('hex');
+}
+
+/**
+ * Validate project type
+ */
+function validateType(type) {
+  if (!VALID_TYPES.includes(type)) {
+    throw new Error(`Invalid type. Valid: ${VALID_TYPES.join(', ')}`);
+  }
+  return type;
+}
+
+/**
+ * Validate task status
+ */
+function validateStatus(status) {
+  if (!VALID_STATUSES.includes(status)) {
+    throw new Error(`Invalid status. Valid: ${VALID_STATUSES.join(', ')}`);
+  }
+  return status;
+}
+
+/**
+ * Create a new research project
+ */
+async function createProject(options) {
+  const { project, type, description, tags, owner } = options;
+
+  if (!project) {
+    throw new Error('Project name is required (--project)');
+  }
+
+  const projectType = type ? validateType(type) : 'general';
+  const projectTags = tags ? tags.split(',') : [];
+
+  const data = await loadProjects();
+  const projectId = generateId();
+
+  const projectObj = {
+    id: projectId,
+    name: project,
+    type: projectType,
+    description: description || '',
+    tags: projectTags,
+    owner: owner || 'unknown',
+    status: 'active',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  data.projects.push(projectObj);
+  await saveProjects(data);
+
+  // Create project directory
+  const projectDir = path.join(DEFAULT_DATA_DIR, projectId);
+  await fs.mkdir(projectDir, { recursive: true });
+
+  console.log(colorize('\n✅ Project created!', 'green'));
+  console.log(colorize(`📁 ID: ${projectId}`, 'cyan'));
+  console.log(colorize(`📝 Name: ${projectObj.name}`, 'cyan'));
+  console.log(colorize(`🔬 Type: ${projectObj.type}`, 'cyan'));
+  console.log(colorize(`🏷️  Tags: ${projectTags.join(', ') || 'none'}`, 'cyan'));
+  console.log(colorize(`👤 Owner: ${projectObj.owner}`, 'cyan'));
+  console.log(colorize(`📂 Directory: ${projectDir}`, 'dim'));
+
+  return projectId;
+}
+
+/**
+ * List all projects
+ */
+async function listProjects(options) {
+  const { status, type, owner } = options;
+  const data = await loadProjects();
+
+  let projects = data.projects;
+
+  // Filter by status
+  if (status) {
+    projects = projects.filter(p => p.status === status);
+  }
+
+  // Filter by type
+  if (type) {
+    projects = projects.filter(p => p.type === type);
+  }
+
+  // Filter by owner
+  if (owner) {
+    projects = projects.filter(p => p.owner === owner.toLowerCase());
+  }
+
+  if (projects.length === 0) {
+    console.log(colorize('\nNo projects found', 'dim'));
+    return;
+  }
+
+  console.log(colorize(`\n📁 Projects (${projects.length}):\n`, 'cyan'));
+
+  projects.forEach((project, index) => {
+    const statusColor = {
+      active: 'green',
+      completed: 'blue',
+      archived: 'dim'
+    }[project.status] || 'dim';
+
+    console.log(colorize(`${index + 1}. ${project.name}`, 'bright'));
+    console.log(`   ${colorize('ID:', 'dim')} ${project.id}`);
+    console.log(`   ${colorize('Status:', 'dim')} ${colorize(project.status, statusColor)}`);
+    console.log(`   ${colorize('Type:', 'dim')} ${project.type}`);
+    console.log(`   ${colorize('Owner:', 'dim')} ${project.owner}`);
+    console.log(`   ${colorize('Tags:', 'dim')} ${project.tags.join(', ') || 'none'}`);
+
+    // Show task summary
+    const projectTasks = data.tasks.filter(t => t.projectId === project.id);
+    if (projectTasks.length > 0) {
+      const completed = projectTasks.filter(t => t.status === 'completed').length;
+      const blocked = projectTasks.filter(t => t.status === 'blocked').length;
+      console.log(`   ${colorize('Tasks:', 'dim')} ${projectTasks.length} total (${completed} completed, ${blocked} blocked)`);
+    }
+
+    console.log('');
+  });
+}
+
+/**
+ * Add task to project
+ */
+async function addTask(options) {
+  const { project_id, projectId, task, description, priority, assignee } = options;
+  const id = project_id || projectId;
+
+  if (!id) {
+    throw new Error('Project ID is required (--project-id)');
+  }
+
+  if (!task) {
+    throw new Error('Task name is required (--task)');
+  }
+
+  const data = await loadProjects();
+  const project = data.projects.find(p => p.id === id);
+
+  if (!project) {
+    throw new Error(`Project ${id} not found`);
+  }
+
+  const taskObj = {
+    id: generateId(),
+    projectId: id,
+    name: task,
+    description: description || '',
+    priority: priority || 'medium',
+    assignee: assignee || 'unassigned',
+    status: 'todo',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  data.tasks.push(taskObj);
+  project.updatedAt = new Date().toISOString();
+
+  await saveProjects(data);
+
+  console.log(colorize('\n✅ Task added!', 'green'));
+  console.log(colorize(`✓ ${taskObj.name}`, 'cyan'));
+  console.log(colorize(`📁 Project: ${project.name}`, 'cyan'));
+  console.log(colorize(`🎯 Priority: ${taskObj.priority}`, 'cyan'));
+  console.log(colorize(`👤 Assignee: ${taskObj.assignee}`, 'cyan'));
+}
+
+/**
+ * Update task status
+ */
+async function updateTaskStatus(options) {
+  const { task_id, taskId, status } = options;
+  const id = task_id || taskId;
+
+  if (!id) {
+    throw new Error('Task ID is required (--task-id)');
+  }
+
+  if (!status) {
+    throw new Error('Status is required (--status)');
+  }
+
+  const newStatus = validateStatus(status);
+
+  const data = await loadProjects();
+  const task = data.tasks.find(t => t.id === id);
+
+  if (!task) {
+    throw new Error(`Task ${taskId} not found`);
+  }
+
+  task.status = newStatus;
+  task.updatedAt = new Date().toISOString();
+
+  // Update project timestamp
+  const project = data.projects.find(p => p.id === task.projectId);
+  if (project) {
+    project.updatedAt = new Date().toISOString();
+  }
+
+  await saveProjects(data);
+
+  console.log(colorize('\n✅ Task status updated!', 'green'));
+  console.log(colorize(`✓ ${task.name}`, 'cyan'));
+  console.log(colorize(`📊 Status: ${newStatus}`, 'cyan'));
+}
+
+/**
+ * Run digest on project
+ */
+async function digestProject(options) {
+  const { project_id, projectId } = options;
+  const id = project_id || projectId;
+
+  if (!id) {
+    throw new Error('Project ID is required (--project-id)');
+  }
+
+  const data = await loadProjects();
+  const project = data.projects.find(p => p.id === id);
+
+  if (!project) {
+    throw new Error(`Project ${projectId} not found`);
+  }
+
+  const projectDir = path.join(DEFAULT_DATA_DIR, projectId);
+
+  // Check if research-digest is available
+  try {
+    console.log(colorize('\n🔄 Running research-digest...', 'cyan'));
+    console.log(colorize(`📂 Directory: ${projectDir}`, 'dim'));
+
+    const output = execSync(
+      `research-digest "${projectDir}" --json`,
+      { encoding: 'utf8' }
+    );
+
+    const digest = JSON.parse(output);
+
+    console.log(colorize('\n✅ Digest complete!', 'green'));
+    console.log(colorize(`📄 ${digest.tweets.length} tweet drafts`, 'cyan'));
+    console.log(colorize(`📝 ${digest.blog_angles.length} blog angles`, 'cyan'));
+    console.log(colorize(`💡 ${digest.insights.length} insights`, 'cyan'));
+
+    // Save digest to project directory
+    const digestFile = path.join(projectDir, 'digest.json');
+    await fs.writeFile(digestFile, JSON.stringify(digest, null, 2), 'utf8');
+    console.log(colorize(`💾 Saved to: ${digestFile}`, 'dim'));
+
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      console.log(colorize('\n⚠️  research-digest not found', 'yellow'));
+      console.log(colorize('Install it first:', 'dim'));
+      console.log('  ln -sf ~/.openclaw/workspace/tools/research-digest/research-digest ~/.local/bin/research-digest');
+    } else {
+      throw error;
+    }
+  }
+}
+
+/**
+ * Export project
+ */
+async function exportProject(options) {
+  const { project_id, projectId, output } = options;
+  const id = project_id || projectId;
+
+  if (!id) {
+    throw new Error('Project ID is required (--project-id)');
+  }
+
+  const data = await loadProjects();
+  const project = data.projects.find(p => p.id === id);
+
+  if (!project) {
+    throw new Error(`Project ${id} not found`);
+  }
+
+  const projectTasks = data.tasks.filter(t => t.projectId === id);
+
+  const markdown = `# ${project.name}
+
+**Type:** ${project.type}
+**Owner:** ${project.owner}
+**Status:** ${project.status}
+**Created:** ${new Date(project.createdAt).toLocaleString()}
+**Tags:** ${project.tags.join(', ') || 'none'}
+
+${project.description ? `## Description\n\n${project.description}\n\n` : ''}## Tasks
+
+${projectTasks.map(task => {
+  const statusIcon = {
+    'todo': '⬜',
+    'in-progress': '🔄',
+    'completed': '✅',
+    'blocked': '🚫'
+  }[task.status];
+
+  return `### ${statusIcon} ${task.name}
+
+- **Status:** ${task.status}
+- **Priority:** ${task.priority}
+- **Assignee:** ${task.assignee}
+${task.description ? `- **Description:** ${task.description}` : ''}
+`;
+}).join('\n---\n\n')}
+
+---
+*Generated by research-workflow*
+`;
+
+  const outputPath = output || path.join(process.cwd(), `${project.id}-project.md`);
+  await fs.writeFile(outputPath, markdown, 'utf8');
+
+  console.log(colorize('\n✅ Project exported!', 'green'));
+  console.log(colorize(`📄 ${outputPath}`, 'cyan'));
+}
+
+/**
+ * Parse CLI args
+ */
+function parseArgs() {
+  const args = {};
+  const positional = [];
+
+  for (let i = 2; i < process.argv.length; i++) {
+    const arg = process.argv[i];
+
+    if (arg.startsWith('--')) {
+      const key = arg.slice(2).replace(/-/g, '_');
+      const nextArg = process.argv[i + 1];
+      if (nextArg && !nextArg.startsWith('-')) {
+        args[key] = nextArg;
+        i++;
+      } else {
+        args[key] = true;
+      }
+    } else if (arg.startsWith('-')) {
+      const key = arg.slice(1);
+      const nextArg = process.argv[i + 1];
+      if (nextArg && !nextArg.startsWith('-')) {
+        args[key] = nextArg;
+        i++;
+      } else {
+        args[key] = true;
+      }
+    } else {
+      positional.push(arg);
+    }
+  }
+
+  return { args, positional };
+}
+
+/**
+ * Main handler
+ */
+async function main() {
+  const { args, positional } = parseArgs();
+
+  console.log(colorize('🔬 Research Workflow Manager', 'magenta'));
+  console.log(colorize('   Manage research projects and workflows\n', 'dim'));
+
+  const command = positional[0];
+
+  if (!command || command === 'help' || command === '--help' || command === '-h') {
+    console.log(colorize('Usage:', 'bright'));
+    console.log('  research-workflow create --project "Name" --type ai-research');
+    console.log('  research-workflow list [--status active] [--type ai-research]');
+    console.log('  research-workflow add-task --project-id <id> --task "Task"');
+    console.log('  research-workflow task-status --task-id <id> --status in-progress');
+    console.log('  research-workflow digest --project-id <id>');
+    console.log('  research-workflow export --project-id <id>\n');
+
+    console.log(colorize('Commands:', 'bright'));
+    console.log('  create       Create a new research project');
+    console.log('  list         List all projects');
+    console.log('  add-task     Add a task to a project');
+    console.log('  task-status  Update task status');
+    console.log('  digest       Run research-digest on project files');
+    console.log('  export       Export project to Markdown');
+    process.exit(0);
+  }
+
+  try {
+    switch (command) {
+      case 'create':
+        await createProject(args);
+        break;
+      case 'list':
+        await listProjects(args);
+        break;
+      case 'add-task':
+        await addTask(args);
+        break;
+      case 'task-status':
+        await updateTaskStatus(args);
+        break;
+      case 'digest':
+        await digestProject(args);
+        break;
+      case 'export':
+        await exportProject(args);
+        break;
+      default:
+        console.error(colorize(`Error: Unknown command '${command}'`, 'red'));
+        console.log('Run "research-workflow help" for usage');
+        process.exit(1);
+    }
+  } catch (error) {
+    console.error(colorize(`\n❌ Error: ${error.message}`, 'red'));
+    process.exit(1);
+  }
+}
+
+main();
