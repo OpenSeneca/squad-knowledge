@@ -27,7 +27,7 @@ This directory contains all tools built by the OpenSeneca squad.
 7. **gh-release-monitor** - Monitor GitHub releases from multiple repos
 8. **squad-overview** - Complete picture of squad status, tools, learnings
 
-## Local Tools (16+)
+## Local Tools (17+)
 
 Additional tools deployed locally but not yet published:
 - squad-dashboard (running locally at http://100.100.56.102:8080)
@@ -38,6 +38,7 @@ Additional tools deployed locally but not yet published:
 - blog-publisher
 - obsidian-skills (validate and manage Obsidian skills)
 - research-note (quick research logging for findings)
+- squad-meeting (squad coordination and meeting management)
 - twitter-post (ready for deployment)
 - [And more - see `squad-overview` for full list]
 
