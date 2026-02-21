@@ -1,0 +1,374 @@
+#!/usr/bin/env node
+/**
+ * GitHub Issue Analyzer
+ *
+ * A CLI tool to analyze GitHub issues across repositories.
+ * Categorizes by label, status, assignee, and identifies patterns.
+ *
+ * Usage:
+ *   gh-issue-analyzer analyze --owner OpenSeneca --repo squad-overview
+ *   gh-issue-analyzer analyze --owner OpenSeneca --all
+ *   gh-issue-analyzer stats --owner OpenSeneca
+ */
+
+const { execSync } = require('child_process');
+
+// ANSI color codes
+const colors = {
+  reset: '\x1b[0m',
+  bright: '\x1b[1m',
+  dim: '\x1b[2m',
+  red: '\x1b[31m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  blue: '\x1b[34m',
+  cyan: '\x1b[36m',
+  magenta: '\x1b[35m',
+};
+
+function colorize(text, color) {
+  return `${colors[color]}${text}${colors.reset}`;
+}
+
+/**
+ * Run gh CLI command and return output
+ */
+function gh(args) {
+  try {
+    return execSync(`gh ${args}`, { encoding: 'utf8' });
+  } catch (error) {
+    if (error.stdout) {
+      return error.stdout;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Fetch issues from a repository
+ */
+function fetchIssues(repo, state = 'open') {
+  const output = gh(`issue list --search "repo:${repo}" --state ${state} --json number,title,state,labels,assignees,createdAt,comments,url`);
+
+  if (!output.trim()) {
+    return [];
+  }
+
+  return JSON.parse(output);
+}
+
+/**
+ * Fetch issues from all repos for an owner
+ */
+function fetchAllIssues(owner, state = 'open') {
+  try {
+    // Note: gh doesn't have a direct "all repos" command
+    // We'll need to list repos first, then fetch issues from each
+    const reposOutput = gh(`repo list ${owner} --limit 100 --json name,nameWithOwner`);
+    const repos = JSON.parse(reposOutput);
+
+    const allIssues = [];
+
+    for (const repo of repos) {
+      try {
+        const issuesOutput = gh(`issue list --search "repo:${repo.nameWithOwner}" --state ${state} --json number,title,state,labels,assignees,createdAt,comments,url,repository`);
+        const issues = JSON.parse(issuesOutput);
+        allIssues.push(...issues);
+      } catch (error) {
+        // Skip repos with no issues or errors
+        continue;
+      }
+    }
+
+    return allIssues;
+  } catch (error) {
+    console.error(colorize(`Error fetching issues: ${error.message}`, 'red'));
+    return [];
+  }
+}
+
+/**
+ * Analyze issues and provide insights
+ */
+function analyzeIssues(issues) {
+  const analysis = {
+    total: issues.length,
+    byStatus: {},
+    byLabel: {},
+    byAssignee: {},
+    byRepo: {},
+    stale: [],
+    complex: [], // High comment count
+    recent: [] // Created in last 7 days
+  };
+
+  const now = new Date();
+  const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+
+  issues.forEach(issue => {
+    // By status
+    const status = issue.state || 'unknown';
+    analysis.byStatus[status] = (analysis.byStatus[status] || 0) + 1;
+
+    // By repo (if available)
+    if (issue.repository) {
+      analysis.byRepo[issue.repository] = (analysis.byRepo[issue.repository] || 0) + 1;
+    }
+
+    // By label
+    if (issue.labels && issue.labels.length > 0) {
+      issue.labels.forEach(label => {
+        const name = label.name || label;
+        analysis.byLabel[name] = (analysis.byLabel[name] || 0) + 1;
+      });
+    } else {
+      analysis.byLabel['unlabeled'] = (analysis.byLabel['unlabeled'] || 0) + 1;
+    }
+
+    // By assignee
+    const assignees = issue.assignees || [];
+    const assignee = assignees.length > 0 ? assignees[0].login : 'unassigned';
+    analysis.byAssignee[assignee] = (analysis.byAssignee[assignee] || 0) + 1;
+
+    // Stale (older than 30 days and no comments)
+    const createdAt = new Date(issue.createdAt);
+    const thirtyDaysAgo = new Date(now - 30 * 24 * 60 * 60 * 1000);
+    if (createdAt < thirtyDaysAgo && (!issue.comments || issue.comments === 0)) {
+      analysis.stale.push(issue);
+    }
+
+    // Complex (10+ comments)
+    if (issue.comments >= 10) {
+      analysis.complex.push(issue);
+    }
+
+    // Recent (last 7 days)
+    if (createdAt > weekAgo) {
+      analysis.recent.push(issue);
+    }
+  });
+
+  return analysis;
+}
+
+/**
+ * Display analysis results
+ */
+function displayAnalysis(analysis, showIssues = false) {
+  console.log(colorize('\n📊 Issue Analysis', 'cyan'));
+  console.log(colorize(`\nTotal: ${analysis.total} issues\n`, 'bright'));
+
+  // By status
+  console.log(colorize('📈 By Status:', 'blue'));
+  Object.entries(analysis.byStatus)
+    .sort(([, a], [, b]) => b - a)
+    .forEach(([status, count]) => {
+      const color = status === 'open' ? 'green' : status === 'closed' ? 'dim' : 'yellow';
+      console.log(`   ${colorize(status, color)}: ${count}`);
+    });
+
+  // By repo
+  if (Object.keys(analysis.byRepo).length > 0) {
+    console.log(colorize('\n📁 By Repository:', 'blue'));
+    Object.entries(analysis.byRepo)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 10)
+      .forEach(([repo, count]) => {
+        console.log(`   ${repo}: ${count}`);
+      });
+  }
+
+  // By label (top 10)
+  console.log(colorize('\n🏷️  By Label (top 10):', 'blue'));
+  Object.entries(analysis.byLabel)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 10)
+    .forEach(([label, count]) => {
+      console.log(`   ${label}: ${count}`);
+    });
+
+  // By assignee
+  console.log(colorize('\n👤 By Assignee:', 'blue'));
+  Object.entries(analysis.byAssignee)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 10)
+    .forEach(([assignee, count]) => {
+      const color = assignee === 'unassigned' ? 'yellow' : 'green';
+      console.log(`   ${colorize(assignee, color)}: ${count}`);
+    });
+
+  // Insights
+  console.log(colorize('\n💡 Insights:', 'magenta'));
+
+  if (analysis.stale.length > 0) {
+    console.log(`   ${colorize('⚠️', 'yellow')} ${analysis.stale.length} stale issues (>30 days, no comments)`);
+    if (showIssues) {
+      console.log(colorize('      Stale issues:', 'dim'));
+      analysis.stale.slice(0, 5).forEach(issue => {
+        console.log(`      - #${issue.number}: ${issue.title}`);
+      });
+      if (analysis.stale.length > 5) {
+        console.log(`      ... and ${analysis.stale.length - 5} more`);
+      }
+    }
+  }
+
+  if (analysis.complex.length > 0) {
+    console.log(`   ${colorize('💬', 'cyan')} ${analysis.complex.length} complex issues (10+ comments)`);
+    if (showIssues) {
+      console.log(colorize('      Complex issues:', 'dim'));
+      analysis.complex.slice(0, 3).forEach(issue => {
+        console.log(`      - #${issue.number}: ${issue.title} (${issue.comments} comments)`);
+      });
+      if (analysis.complex.length > 3) {
+        console.log(`      ... and ${analysis.complex.length - 3} more`);
+      }
+    }
+  }
+
+  if (analysis.recent.length > 0) {
+    console.log(`   ${colorize('🆕', 'green')} ${analysis.recent.length} recent issues (last 7 days)`);
+    if (showIssues) {
+      console.log(colorize('      Recent issues:', 'dim'));
+      analysis.recent.slice(0, 5).forEach(issue => {
+        console.log(`      - #${issue.number}: ${issue.title}`);
+      });
+      if (analysis.recent.length > 5) {
+        console.log(`      ... and ${analysis.recent.length - 5} more`);
+      }
+    }
+  }
+
+  // Assignee issues
+  const unassigned = analysis.byAssignee['unassigned'] || 0;
+  const assigned = analysis.total - unassigned;
+  const assignRate = analysis.total > 0 ? ((assigned / analysis.total) * 100).toFixed(1) : 0;
+
+  console.log(`   ${colorize('📊', 'blue')} ${assigned}/${analysis.total} issues assigned (${assignRate}%)`);
+
+  // Label coverage
+  const unlabeled = analysis.byLabel['unlabeled'] || 0;
+  const labeled = analysis.total - unlabeled;
+  const labelRate = analysis.total > 0 ? ((labeled / analysis.total) * 100).toFixed(1) : 0;
+
+  console.log(`   ${colorize('🏷️', 'blue')} ${labeled}/${analysis.total} issues labeled (${labelRate}%)`);
+}
+
+/**
+ * List issues with details
+ */
+function listIssues(issues) {
+  if (issues.length === 0) {
+    console.log(colorize('\nNo issues found', 'dim'));
+    return;
+  }
+
+  console.log(colorize(`\n📋 Issues (${issues.length}):\n`, 'cyan'));
+
+  issues.forEach((issue, index) => {
+    const statusColor = issue.state === 'open' ? 'green' : 'dim';
+    const assignee = issue.assignee || 'unassigned';
+    const labels = issue.labels ? issue.labels.map(l => l.name || l).join(', ') : 'none';
+
+    console.log(colorize(`${index + 1}. #${issue.number}: ${issue.title}`, 'bright'));
+    console.log(`   ${colorize('Status:', 'dim')} ${colorize(issue.state, statusColor)}`);
+    console.log(`   ${colorize('Assignee:', 'dim')} ${assignee}`);
+    console.log(`   ${colorize('Labels:', 'dim')} ${labels}`);
+    console.log(`   ${colorize('Comments:', 'dim')} ${issue.comments}`);
+    console.log(`   ${colorize('URL:', 'dim')} ${issue.url}`);
+    console.log('');
+  });
+}
+
+/**
+ * Main handler
+ */
+async function main() {
+  const args = process.argv.slice(2);
+
+  console.log(colorize('🔍 GitHub Issue Analyzer', 'cyan'));
+  console.log(colorize('   Analyze issues across repositories\n', 'dim'));
+
+  const command = args[0];
+
+  if (!command || command === 'help' || command === '--help' || command === '-h') {
+    console.log(colorize('Usage:', 'bright'));
+    console.log('  gh-issue-analyzer analyze --owner <owner> --repo <repo>');
+    console.log('  gh-issue-analyzer analyze --owner <owner> --all [--show-issues]');
+    console.log('  gh-issue-analyzer list --owner <owner> --repo <repo>');
+    console.log('  gh-issue-analyzer list --owner <owner> --all [--state open|closed|all]\n');
+
+    console.log(colorize('Commands:', 'bright'));
+    console.log('  analyze  Analyze issues and show insights');
+    console.log('  list     List all issues with details');
+    console.log(colorize('\nOptions:', 'bright'));
+    console.log('  --owner OWNER    Repository owner (required)');
+    console.log('  --repo REPO      Specific repository');
+    console.log('  --all            All repositories for owner');
+    console.log('  --state STATE    Issue state: open, closed, all (default: open)');
+    console.log('  --show-issues    Show detailed issue lists in analysis');
+    process.exit(0);
+  }
+
+  // Parse options
+  const options = {};
+  for (let i = 1; i < args.length; i++) {
+    if (args[i].startsWith('--')) {
+      const key = args[i].slice(2);
+      if (args[i + 1] && !args[i + 1].startsWith('--')) {
+        options[key] = args[i + 1];
+        i++;
+      } else {
+        options[key] = true;
+      }
+    }
+  }
+
+  const owner = options.owner;
+  if (!owner) {
+    console.error(colorize('Error: --owner is required', 'red'));
+    process.exit(1);
+  }
+
+  try {
+    let issues;
+    const state = options.state || 'open';
+
+    if (command === 'analyze') {
+      if (options.all) {
+        issues = fetchAllIssues(owner, state);
+      } else if (options.repo) {
+        issues = fetchIssues(`${owner}/${options.repo}`, state);
+      } else {
+        console.error(colorize('Error: --repo or --all required', 'red'));
+        process.exit(1);
+      }
+
+      const analysis = analyzeIssues(issues);
+      displayAnalysis(analysis, options.show_issues);
+
+    } else if (command === 'list') {
+      if (options.all) {
+        issues = fetchAllIssues(owner, state);
+      } else if (options.repo) {
+        issues = fetchIssues(`${owner}/${options.repo}`, state);
+      } else {
+        console.error(colorize('Error: --repo or --all required', 'red'));
+        process.exit(1);
+      }
+
+      listIssues(issues);
+    } else {
+      console.error(colorize(`Error: Unknown command '${command}'`, 'red'));
+      console.log('Run "gh-issue-analyzer help" for usage');
+      process.exit(1);
+    }
+  } catch (error) {
+    console.error(colorize(`\n❌ Error: ${error.message}`, 'red'));
+    console.error(colorize('\nMake sure gh CLI is installed and authenticated:', 'dim'));
+    console.error('  gh auth login');
+    process.exit(1);
+  }
+}
+
+main();
