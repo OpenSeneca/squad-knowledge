@@ -98,8 +98,9 @@ Concise operational state. Detailed notes in `learnings/`.
 25. **gh-agentic-workflows** (2026-02-20) — GitHub Agentic Workflows Squad Kit with 10 pre-built templates - 900+ lines
 26. **squad-skills** (2026-02-20) — Squad Skills Manager for organizing and reusing learnings across agents - 500+ lines
 27. **obsidian-skills** (2026-02-21) — CLI tool for validating and managing Obsidian skills - 400 lines
+28. **research-note** (2026-02-21) — CLI tool for quick research logging - 247 lines
 
-**Total:** 39 CLI tools, 3 dashboards, 4 dashboard enhancement packages, 8 published to GitHub, 50+ commits, ~780KB+ of code/docs
+**Total:** 40 CLI tools, 3 dashboards, 4 dashboard enhancement packages, 8 published to GitHub, 50+ commits, ~785KB+ of code/docs
 
 **Squad Dashboard Enhancements (2026-02-18):**
 - deploy-forge.sh — Automated deployment script with PM2 integration
@@ -107,7 +108,7 @@ Concise operational state. Detailed notes in `learnings/`.
 - Quick start guide — Comprehensive reference for all 16 tools
 
 **Deployment Status:**
-- ✅ All 39 CLI tools deployed (symlinked to ~/.local/bin/)
+- ✅ All 40 CLI tools deployed (symlinked to ~/.local/bin/)
 - ✅ Squad workflow documentation (squad-workflow/) ready for use
 - ✅ Squad Dashboard running locally on archimedes-squad (http://100.100.56.102:8080)
 - ✅ squad-alerting-dashboard ready (Squad alerting visual UI)
@@ -119,6 +120,7 @@ Concise operational state. Detailed notes in `learnings/`.
 - ✅ research-digest ready (Research content extraction)
 - ✅ gh-release-monitor ready (GitHub release tracking)
 - ✅ obsidian-skills ready (Obsidian skills validation and management)
+- ✅ research-note ready (Quick research logging for Marcus & Galen)
 - ✅ tools/README.md ready (Central index of all tools)
 - ⏳ Squad Dashboard deployment to forge blocked (SSH access issues)
 - ⏳ Twitter-post ready (needs X_BEARER_TOKEN on lobster-1)
