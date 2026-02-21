@@ -1,0 +1,512 @@
+#!/usr/bin/env node
+/**
+ * Squad Meeting Manager
+ *
+ * A CLI tool for managing squad meetings, agendas, and action items.
+ * Helps coordinate across agents (Seneca, Marcus, Galen, Archimedes).
+ *
+ * Usage:
+ *   squad-meeting create --title "Squad Sync" --participants seneca,marcus,galen
+ *   squad-meeting note "Discussed Q1 goals" --meeting-id <id>
+ *   squad-meeting action "Research MCP servers" --assignee marcus --due 2026-02-28
+ *   squad-meeting list
+ */
+
+const fs = require('fs').promises;
+const path = require('path');
+const crypto = require('crypto');
+
+// ANSI color codes
+const colors = {
+  reset: '\x1b[0m',
+  bright: '\x1b[1m',
+  dim: '\x1b[2m',
+  red: '\x1b[31m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  blue: '\x1b[34m',
+  cyan: '\x1b[36m',
+  magenta: '\x1b[35m',
+};
+
+function colorize(text, color) {
+  return `${colors[color]}${text}${colors.reset}`;
+}
+
+// Configuration
+const DEFAULT_DATA_DIR = path.join(process.env.HOME, '.openclaw', 'squad-meetings');
+const DATA_FILE = path.join(DEFAULT_DATA_DIR, 'meetings.json');
+
+// Valid agents in the squad
+const VALID_AGENTS = ['seneca', 'marcus', 'galen', 'archimedes', 'justin'];
+
+/**
+ * Ensure data directory exists
+ */
+async function ensureDataDir() {
+  await fs.mkdir(DEFAULT_DATA_DIR, { recursive: true });
+}
+
+/**
+ * Load meetings data
+ */
+async function loadMeetings() {
+  await ensureDataDir();
+  try {
+    const data = await fs.readFile(DATA_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    // Return empty structure if file doesn't exist
+    return {
+      meetings: [],
+      actions: []
+    };
+  }
+}
+
+/**
+ * Save meetings data
+ */
+async function saveMeetings(data) {
+  await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
+}
+
+/**
+ * Generate unique ID
+ */
+function generateId() {
+  return crypto.randomBytes(4).toString('hex');
+}
+
+/**
+ * Validate agent names
+ */
+function validateAgents(agents) {
+  const invalid = agents.filter(a => !VALID_AGENTS.includes(a.toLowerCase()));
+  if (invalid.length > 0) {
+    throw new Error(`Invalid agent(s): ${invalid.join(', ')}. Valid: ${VALID_AGENTS.join(', ')}`);
+  }
+  return agents.map(a => a.toLowerCase());
+}
+
+/**
+ * Create a new meeting
+ */
+async function createMeeting(options) {
+  const { title, participants, duration, agenda } = options;
+
+  if (!title) {
+    throw new Error('Meeting title is required (--title)');
+  }
+
+  const data = await loadMeetings();
+  const meetingId = generateId();
+
+  const meeting = {
+    id: meetingId,
+    title,
+    participants: participants ? validateAgents(participants.split(',')) : VALID_AGENTS,
+    duration: duration || 30,
+    agenda: agenda || '',
+    status: 'scheduled',
+    notes: [],
+    actions: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  data.meetings.push(meeting);
+  await saveMeetings(data);
+
+  console.log(colorize('\n✅ Meeting created!', 'green'));
+  console.log(colorize(`📅 ID: ${meetingId}`, 'cyan'));
+  console.log(colorize(`📝 Title: ${meeting.title}`, 'cyan'));
+  console.log(colorize(`👥 Participants: ${meeting.participants.join(', ')}`, 'cyan'));
+  console.log(colorize(`⏱️  Duration: ${meeting.duration} minutes`, 'cyan'));
+  console.log(colorize(`📋 Status: ${meeting.status}`, 'cyan'));
+
+  return meetingId;
+}
+
+/**
+ * List all meetings
+ */
+async function listMeetings(options) {
+  const { status, agent } = options;
+  const data = await loadMeetings();
+
+  let meetings = data.meetings;
+
+  // Filter by status
+  if (status) {
+    meetings = meetings.filter(m => m.status === status);
+  }
+
+  // Filter by agent participation
+  if (agent) {
+    meetings = meetings.filter(m =>
+      m.participants.includes(agent.toLowerCase())
+    );
+  }
+
+  if (meetings.length === 0) {
+    console.log(colorize('\nNo meetings found', 'dim'));
+    return;
+  }
+
+  console.log(colorize(`\n📅 Meetings (${meetings.length}):\n`, 'cyan'));
+
+  meetings.forEach((meeting, index) => {
+    const statusColor = {
+      scheduled: 'blue',
+      in_progress: 'yellow',
+      completed: 'green',
+      cancelled: 'red'
+    }[meeting.status] || 'dim';
+
+    console.log(colorize(`${index + 1}. ${meeting.title}`, 'bright'));
+    console.log(`   ${colorize('ID:', 'dim')} ${meeting.id}`);
+    console.log(`   ${colorize('Status:', 'dim')} ${colorize(meeting.status, statusColor)}`);
+    console.log(`   ${colorize('Participants:', 'dim')} ${meeting.participants.join(', ')}`);
+    console.log(`   ${colorize('Created:', 'dim')} ${new Date(meeting.createdAt).toLocaleString()}`);
+
+    if (meeting.notes.length > 0) {
+      console.log(`   ${colorize('Notes:', 'dim')} ${meeting.notes.length} entries`);
+    }
+
+    if (meeting.actions.length > 0) {
+      const pendingActions = meeting.actions
+        .map(actionId => data.actions.find(a => a.id === actionId))
+        .filter(Boolean)
+        .filter(a => a.status !== 'completed');
+      console.log(`   ${colorize('Actions:', 'dim')} ${meeting.actions.length} total (${pendingActions.length} pending)`);
+    }
+
+    console.log('');
+  });
+
+  // Show pending actions across all meetings
+  const pendingActions = data.actions.filter(a => a.status !== 'completed');
+  if (pendingActions.length > 0) {
+    console.log(colorize(`\n📌 Pending Actions (${pendingActions.length}):\n`, 'yellow'));
+    pendingActions.forEach(action => {
+      console.log(colorize(`- ${action.description}`, 'bright'));
+      console.log(`  ${colorize('→', 'dim')} Assignee: ${action.assignee}`);
+      if (action.dueDate) {
+        const due = new Date(action.dueDate);
+        const overdue = due < new Date();
+        console.log(`  ${colorize('→', 'dim')} Due: ${colorize(due.toLocaleDateString(), overdue ? 'red' : 'cyan')}`);
+      }
+      console.log('');
+    });
+  }
+}
+
+/**
+ * Add note to meeting
+ */
+async function addNote(options) {
+  const { meeting_id, meetingId, note, author } = options;
+  const id = meeting_id || meetingId;
+
+  if (!id) {
+    throw new Error('Meeting ID is required (--meeting-id)');
+  }
+
+  if (!note) {
+    throw new Error('Note content is required (--note)');
+  }
+
+  const data = await loadMeetings();
+  const meeting = data.meetings.find(m => m.id === id);
+
+  if (!meeting) {
+    throw new Error(`Meeting ${meetingId} not found`);
+  }
+
+  const noteEntry = {
+    id: generateId(),
+    content: note,
+    author: author || 'unknown',
+    timestamp: new Date().toISOString()
+  };
+
+  meeting.notes.push(noteEntry);
+  meeting.updatedAt = new Date().toISOString();
+
+  await saveMeetings(data);
+
+  console.log(colorize('\n✅ Note added!', 'green'));
+  console.log(colorize(`📝 Meeting: ${meeting.title}`, 'cyan'));
+  console.log(colorize(`💬 Note: ${note}`, 'cyan'));
+}
+
+/**
+ * Add action item to meeting
+ */
+async function addAction(options) {
+  const { meeting_id, meetingId, description, assignee, dueDate, priority } = options;
+  const id = meeting_id || meetingId;
+
+  if (!description) {
+    throw new Error('Action description is required (--description)');
+  }
+
+  const assignedTo = assignee ? validateAgents([assignee])[0] : 'unassigned';
+
+  const data = await loadMeetings();
+  const meetingIdVal = id;
+
+  const action = {
+    id: generateId(),
+    meetingId: meetingIdVal || null,
+    description,
+    assignee: assignedTo,
+    dueDate: dueDate || null,
+    priority: priority || 'medium',
+    status: 'pending',
+    createdAt: new Date().toISOString()
+  };
+
+  data.actions.push(action);
+
+  // If meeting ID provided, add to meeting's actions list
+  if (meetingIdVal) {
+    const meeting = data.meetings.find(m => m.id === meetingIdVal);
+    if (meeting) {
+      meeting.actions.push(action.id);
+      meeting.updatedAt = new Date().toISOString();
+    }
+  }
+
+  await saveMeetings(data);
+
+  console.log(colorize('\n✅ Action created!', 'green'));
+  console.log(colorize(`📌 ${action.description}`, 'cyan'));
+  console.log(colorize(`👤 Assignee: ${action.assignee}`, 'cyan'));
+  if (action.dueDate) {
+    console.log(colorize(`📅 Due: ${action.dueDate}`, 'cyan'));
+  }
+  console.log(colorize(`🎯 Priority: ${action.priority}`, 'cyan'));
+  console.log(colorize(`🆔 ID: ${action.id}`, 'dim'));
+}
+
+/**
+ * Update meeting status
+ */
+async function updateMeetingStatus(options) {
+  const { meeting_id, meetingId, status } = options;
+  const id = meeting_id || meetingId;
+
+  if (!id) {
+    throw new Error('Meeting ID is required (--meeting-id)');
+  }
+
+  if (!status) {
+    throw new Error('Status is required (--status)');
+  }
+
+  const validStatuses = ['scheduled', 'in_progress', 'completed', 'cancelled'];
+  if (!validStatuses.includes(status)) {
+    throw new Error(`Invalid status. Valid: ${validStatuses.join(', ')}`);
+  }
+
+  const data = await loadMeetings();
+  const meeting = data.meetings.find(m => m.id === id);
+
+  if (!meeting) {
+    throw new Error(`Meeting ${meetingId} not found`);
+  }
+
+  meeting.status = status;
+  meeting.updatedAt = new Date().toISOString();
+
+  await saveMeetings(data);
+
+  console.log(colorize('\n✅ Meeting status updated!', 'green'));
+  console.log(colorize(`📅 ${meeting.title}`, 'cyan'));
+  console.log(colorize(`📊 Status: ${status}`, 'cyan'));
+}
+
+/**
+ * Complete action item
+ */
+async function completeAction(options) {
+  const { action_id, actionId } = options;
+  const id = action_id || actionId;
+
+  if (!id) {
+    throw new Error('Action ID is required (--action-id)');
+  }
+
+  const data = await loadMeetings();
+  const action = data.actions.find(a => a.id === id);
+
+  if (!action) {
+    throw new Error(`Action ${actionId} not found`);
+  }
+
+  action.status = 'completed';
+  action.completedAt = new Date().toISOString();
+
+  await saveMeetings(data);
+
+  console.log(colorize('\n✅ Action completed!', 'green'));
+  console.log(colorize(`📌 ${action.description}`, 'cyan'));
+  console.log(colorize(`👤 ${action.assignee}`, 'dim'));
+}
+
+/**
+ * Export meeting notes
+ */
+async function exportMeeting(options) {
+  const { meeting_id, meetingId, output } = options;
+  const id = meeting_id || meetingId;
+
+  if (!id) {
+    throw new Error('Meeting ID is required (--meeting-id)');
+  }
+
+  const data = await loadMeetings();
+  const meeting = data.meetings.find(m => m.id === id);
+
+  if (!meeting) {
+    throw new Error(`Meeting ${meetingId} not found`);
+  }
+
+  const markdown = `# ${meeting.title}
+
+**Date:** ${new Date(meeting.createdAt).toLocaleString()}
+**Status:** ${meeting.status}
+**Participants:** ${meeting.participants.join(', ')}
+
+${meeting.agenda ? `## Agenda\n${meeting.agenda}\n\n` : ''}## Notes
+
+${meeting.notes.map(note => {
+  const time = new Date(note.timestamp).toLocaleTimeString();
+  return `### ${note.author} (${time})\n\n${note.content}\n`;
+}).join('\n---\n\n')}
+
+## Action Items
+
+${meeting.actions
+  .map(actionId => data.actions.find(a => a.id === actionId))
+  .filter(Boolean)
+  .map(action => {
+    const status = action.status === 'completed' ? '✅' : '📌';
+    return `${status} ${action.description} - *${action.assignee}*`;
+  }).join('\n')}
+
+---
+*Generated by squad-meeting*`;
+
+  const outputPath = output || path.join(process.cwd(), `${meetingId}-notes.md`);
+  await fs.writeFile(outputPath, markdown, 'utf8');
+
+  console.log(colorize('\n✅ Meeting exported!', 'green'));
+  console.log(colorize(`📄 ${outputPath}`, 'cyan'));
+}
+
+/**
+ * Parse CLI args
+ */
+function parseArgs() {
+  const args = {};
+  const positional = [];
+
+  for (let i = 2; i < process.argv.length; i++) {
+    const arg = process.argv[i];
+
+    if (arg.startsWith('--')) {
+      const key = arg.slice(2).replace(/-/g, '_'); // Convert hyphens to underscores
+      const nextArg = process.argv[i + 1];
+      if (nextArg && !nextArg.startsWith('-')) {
+        args[key] = nextArg;
+        i++;
+      } else {
+        args[key] = true;
+      }
+    } else if (arg.startsWith('-')) {
+      const key = arg.slice(1);
+      const nextArg = process.argv[i + 1];
+      if (nextArg && !nextArg.startsWith('-')) {
+        args[key] = nextArg;
+        i++;
+      } else {
+        args[key] = true;
+      }
+    } else {
+      positional.push(arg);
+    }
+  }
+
+  return { args, positional };
+}
+
+/**
+ * Main handler
+ */
+async function main() {
+  const { args, positional } = parseArgs();
+
+  console.log(colorize('🤝 Squad Meeting Manager', 'magenta'));
+  console.log(colorize('   Coordinate squad meetings and actions\n', 'dim'));
+
+  const command = positional[0];
+
+  if (!command || command === 'help' || command === '--help' || command === '-h') {
+    console.log(colorize('Usage:', 'bright'));
+    console.log('  squad-meeting create --title "Meeting" --participants seneca,marcus');
+    console.log('  squad-meeting note --meeting-id <id> --note "Discussed X"');
+    console.log('  squad-meeting action --description "Task" --assignee marcus --due 2026-02-28');
+    console.log('  squad-meeting complete --action-id <id>');
+    console.log('  squad-meeting status --meeting-id <id> --status completed');
+    console.log('  squad-meeting export --meeting-id <id>');
+    console.log('  squad-meeting list [--status scheduled] [--agent seneca]\n');
+
+    console.log(colorize('Commands:', 'bright'));
+    console.log('  create    Create a new meeting');
+    console.log('  note       Add notes to a meeting');
+    console.log('  action     Create an action item');
+    console.log('  complete   Mark action as completed');
+    console.log('  status     Update meeting status');
+    console.log('  export     Export meeting notes to Markdown');
+    console.log('  list       List all meetings and pending actions');
+    process.exit(0);
+  }
+
+  try {
+    switch (command) {
+      case 'create':
+        await createMeeting(args);
+        break;
+      case 'list':
+        await listMeetings(args);
+        break;
+      case 'note':
+        await addNote(args);
+        break;
+      case 'action':
+        await addAction(args);
+        break;
+      case 'complete':
+        await completeAction(args);
+        break;
+      case 'status':
+        await updateMeetingStatus(args);
+        break;
+      case 'export':
+        await exportMeeting(args);
+        break;
+      default:
+        console.error(colorize(`Error: Unknown command '${command}'`, 'red'));
+        console.log('Run "squad-meeting help" for usage');
+        process.exit(1);
+    }
+  } catch (error) {
+    console.error(colorize(`\n❌ Error: ${error.message}`, 'red'));
+    process.exit(1);
+  }
+}
+
+main();
