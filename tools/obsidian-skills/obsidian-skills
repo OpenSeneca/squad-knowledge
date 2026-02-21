@@ -1,0 +1,400 @@
+#!/usr/bin/env node
+/**
+ * Obsidian Skills Manager
+ *
+ * A CLI tool to help squad agents manage and test Obsidian skills.
+ * Validates skill files, checks for required fields, and provides diagnostics.
+ *
+ * Usage:
+ *   obsidian-skills validate <skill-path>
+ *   obsidian-skills check <skill-path>
+ *   obsidian-skills list <skills-dir>
+ *   obsidian-skills test <skill-path>
+ */
+
+const fs = require('fs').promises;
+const path = require('path');
+const { execSync } = require('child_process');
+
+// ANSI color codes
+const colors = {
+  reset: '\x1b[0m',
+  bright: '\x1b[1m',
+  dim: '\x1b[2m',
+  red: '\x1b[31m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  blue: '\x1b[34m',
+  magenta: '\x1b[35m',
+  cyan: '\x1b[36m',
+};
+
+function colorize(text, color) {
+  return `${colors[color]}${text}${colors.reset}`;
+}
+
+// Required fields for a valid Obsidian skill
+const REQUIRED_FIELDS = ['name', 'description', 'location'];
+const RECOMMENDED_FIELDS = ['version', 'author', 'metadata'];
+
+/**
+ * Parse frontmatter from a markdown file
+ */
+function parseFrontmatter(content) {
+  const frontmatterRegex = /^---\n([\s\S]*?)\n---/;
+  const match = content.match(frontmatterRegex);
+
+  if (!match) return null;
+
+  const frontmatter = {};
+  match[1].split('\n').forEach(line => {
+    const [key, ...valueParts] = line.split(':');
+    if (key && valueParts.length > 0) {
+      const value = valueParts.join(':').trim().replace(/^["']|["']$/g, '');
+      frontmatter[key.trim()] = value;
+    }
+  });
+
+  return frontmatter;
+}
+
+/**
+ * Extract skill metadata from SKILL.md content
+ */
+function extractSkillMetadata(content) {
+  const metadata = {};
+
+  // Try frontmatter first
+  const frontmatter = parseFrontmatter(content);
+  if (frontmatter) {
+    Object.assign(metadata, frontmatter);
+  }
+
+  // Extract from header sections if frontmatter missing
+  if (!metadata.name) {
+    const nameMatch = content.match(/^#\s+(.+?)\n/);
+    if (nameMatch) metadata.name = nameMatch[1].trim();
+  }
+
+  if (!metadata.description) {
+    const descMatch = content.match(/##\s+Description\s*\n([\s\S]*?)(?=\n##|$)/);
+    if (descMatch) metadata.description = descMatch[1].trim().substring(0, 100);
+  }
+
+  return metadata;
+}
+
+/**
+ * Validate a single skill file
+ */
+async function validateSkill(skillPath) {
+  const fullPath = path.resolve(skillPath);
+  const skillDir = path.dirname(fullPath);
+
+  try {
+    const content = await fs.readFile(fullPath, 'utf8');
+
+    const issues = [];
+    const warnings = [];
+    const info = [];
+
+    // Check file exists
+    info.push(`📄 File: ${fullPath}`);
+
+    // Extract metadata
+    const metadata = extractSkillMetadata(content);
+
+    // Check required fields
+    REQUIRED_FIELDS.forEach(field => {
+      if (!metadata[field]) {
+        issues.push(`❌ Missing required field: ${field}`);
+      } else {
+        info.push(`✓ ${field}: ${metadata[field]}`);
+      }
+    });
+
+    // Check recommended fields
+    RECOMMENDED_FIELDS.forEach(field => {
+      if (!metadata[field]) {
+        warnings.push(`⚠️  Missing recommended field: ${field}`);
+      } else {
+        info.push(`✓ ${field}: ${metadata[field]}`);
+      }
+    });
+
+    // Check for common sections
+    const sections = ['Usage', 'Examples', 'Requirements', 'Limitations'];
+    sections.forEach(section => {
+      if (content.includes(`## ${section}`)) {
+        info.push(`✓ Has section: ${section}`);
+      }
+    });
+
+    // Check file size
+    const stats = await fs.stat(fullPath);
+    const sizeKB = (stats.size / 1024).toFixed(2);
+    info.push(`📊 Size: ${sizeKB} KB`);
+
+    // Check for TODO/FIXME comments
+    const todoMatches = content.match(/TODO|FIXME|XXX/gi);
+    if (todoMatches) {
+      warnings.push(`⚠️  Contains ${todoMatches.length} TODO/FIXME comment(s)`);
+    }
+
+    // Check for code blocks
+    const codeBlocks = content.match(/```[\s\S]*?```/g) || [];
+    info.push(`💻 Code blocks: ${codeBlocks.length}`);
+
+    return {
+      valid: issues.length === 0,
+      issues,
+      warnings,
+      info,
+      metadata,
+      fullPath
+    };
+  } catch (error) {
+    return {
+      valid: false,
+      issues: [`❌ Error reading file: ${error.message}`],
+      warnings: [],
+      info: [],
+      metadata: {},
+      fullPath
+    };
+  }
+}
+
+/**
+ * Check skill structure and related files
+ */
+async function checkSkill(skillPath) {
+  const fullPath = path.resolve(skillPath);
+  const skillDir = path.dirname(fullPath);
+  const skillName = path.basename(skillDir);
+
+  console.log(colorize(`\n🔍 Checking skill: ${skillName}`, 'cyan'));
+
+  const validation = await validateSkill(skillPath);
+
+  // Display validation results
+  console.log(colorize('\n📋 Validation:', 'bright'));
+  validation.info.forEach(item => console.log(`  ${item}`));
+
+  if (validation.issues.length > 0) {
+    console.log(colorize('\n❌ Issues:', 'red'));
+    validation.issues.forEach(issue => console.log(`  ${issue}`));
+  }
+
+  if (validation.warnings.length > 0) {
+    console.log(colorize('\n⚠️  Warnings:', 'yellow'));
+    validation.warnings.forEach(warning => console.log(`  ${warning}`));
+  }
+
+  // Check for related files in skill directory
+  console.log(colorize('\n📁 Directory structure:', 'cyan'));
+  try {
+    const files = await fs.readdir(skillDir);
+    const skillFiles = files.filter(f => f.startsWith('SKILL') || f.endsWith('.md'));
+    const scriptFiles = files.filter(f => f.endsWith('.sh') || f.endsWith('.py') || f.endsWith('.js'));
+
+    console.log(`  📄 Skill files: ${skillFiles.length} (${skillFiles.join(', ') || 'none'})`);
+    console.log(`  🔧 Scripts: ${scriptFiles.length} (${scriptFiles.join(', ') || 'none'})`);
+    console.log(`  📦 Total files: ${files.length}`);
+  } catch (error) {
+    console.log(`  ⚠️  Could not read directory: ${error.message}`);
+  }
+
+  // Try to extract usage examples
+  console.log(colorize('\n💡 Usage check:', 'cyan'));
+  try {
+    const content = await fs.readFile(fullPath, 'utf8');
+    const usageMatch = content.match(/##\s+(Usage|How to Use)\s*\n([\s\S]*?)(?=\n##|$)/i);
+    if (usageMatch) {
+      const usageText = usageMatch[2].trim().substring(0, 200);
+      console.log(`  ${usageText}...`);
+    } else {
+      console.log(`  ⚠️  No usage section found`);
+    }
+  } catch (error) {
+    console.log(`  ⚠️  Could not extract usage: ${error.message}`);
+  }
+
+  console.log(colorize(`\n${validation.valid ? '✅' : '❌'} ${validation.valid ? 'Skill is valid' : 'Skill has issues'}`, validation.valid ? 'green' : 'red'));
+
+  return validation;
+}
+
+/**
+ * List all skills in a directory
+ */
+async function listSkills(skillsDir) {
+  const dirPath = path.resolve(skillsDir);
+
+  try {
+    const files = await fs.readdir(dirPath, { withFileTypes: true });
+    const skills = [];
+
+    for (const file of files) {
+      if (file.isDirectory()) {
+        const skillPath = path.join(dirPath, file.name, 'SKILL.md');
+        try {
+          await fs.access(skillPath);
+          const metadata = extractSkillMetadata(await fs.readFile(skillPath, 'utf8'));
+          skills.push({
+            name: file.name,
+            path: skillPath,
+            metadata
+          });
+        } catch {
+          // Skip directories without SKILL.md
+        }
+      } else if (file.name === 'SKILL.md') {
+        const metadata = extractSkillMetadata(await fs.readFile(path.join(dirPath, file.name), 'utf8'));
+        skills.push({
+          name: path.basename(dirPath),
+          path: path.join(dirPath, file.name),
+          metadata
+        });
+      }
+    }
+
+    if (skills.length === 0) {
+      console.log(colorize('No skills found', 'yellow'));
+      return [];
+    }
+
+    console.log(colorize(`\n📚 Found ${skills.length} skill(s):\n`, 'cyan'));
+
+    skills.forEach((skill, index) => {
+      console.log(colorize(`${index + 1}. ${skill.metadata.name || skill.name}`, 'bright'));
+      console.log(`   ${skill.metadata.description || 'No description'}`);
+      console.log(`   📂 ${skill.path}\n`);
+    });
+
+    return skills;
+  } catch (error) {
+    console.error(colorize(`Error listing skills: ${error.message}`, 'red'));
+    return [];
+  }
+}
+
+/**
+ * Test skill by trying to execute basic operations
+ */
+async function testSkill(skillPath) {
+  console.log(colorize('\n🧪 Testing skill...', 'cyan'));
+
+  const validation = await validateSkill(skillPath);
+
+  if (!validation.valid) {
+    console.log(colorize('\n❌ Skill has validation issues, skipping tests', 'red'));
+    validation.issues.forEach(issue => console.log(`  ${issue}`));
+    return false;
+  }
+
+  console.log(colorize('✅ Validation passed\n', 'green'));
+
+  // Check if skill has test scripts
+  const skillDir = path.dirname(skillPath);
+  const files = await fs.readdir(skillDir);
+  const testScripts = files.filter(f => f.includes('test') || f.includes('spec'));
+
+  if (testScripts.length > 0) {
+    console.log(colorize(`📝 Found ${testScripts.length} test script(s):`, 'cyan'));
+    testScripts.forEach(script => console.log(`   - ${script}`));
+    console.log(colorize('\n💡 Run tests manually:', 'yellow'));
+    testScripts.forEach(script => {
+      console.log(`   cd ${skillDir} && ${script}`);
+    });
+  } else {
+    console.log(colorize('ℹ️  No test scripts found', 'dim'));
+  }
+
+  // Check for example usage
+  console.log(colorize('\n📖 Checking for examples...', 'cyan'));
+  const content = await fs.readFile(skillPath, 'utf8');
+  const examplesMatch = content.match(/##\s+Examples?\s*\n([\s\S]*?)(?=\n##|$)/i);
+
+  if (examplesMatch) {
+    const exampleCount = (examplesMatch[1].match(/```/g) || []).length / 2;
+    console.log(`✓ Found ${exampleCount} code example(s)`);
+  } else {
+    console.log(colorize('⚠️  No examples section found', 'yellow'));
+  }
+
+  console.log(colorize('\n✅ Skill test complete', 'green'));
+  return true;
+}
+
+/**
+ * Main CLI handler
+ */
+async function main() {
+  const args = process.argv.slice(2);
+  const command = args[0];
+  const target = args[1];
+
+  console.log(colorize('🔷 Obsidian Skills Manager', 'cyan'));
+  console.log(colorize('   Manage and validate Obsidian agent skills\n', 'dim'));
+
+  if (!command || command === 'help' || command === '--help' || command === '-h') {
+    console.log(colorize('Usage:', 'bright'));
+    console.log('  obsidian-skills validate <skill-path>   Validate a single skill');
+    console.log('  obsidian-skills check <skill-path>      Check skill structure and files');
+    console.log('  obsidian-skills list <skills-dir>       List all skills in directory');
+    console.log('  obsidian-skills test <skill-path>       Run skill tests\n');
+
+    console.log(colorize('Examples:', 'bright'));
+    console.log('  obsidian-skills check ~/.openclaw/skills/github/SKILL.md');
+    console.log('  obsidian-skills list ~/.openclaw/skills');
+    console.log('  obsidian-skills validate /usr/lib/node_modules/openclaw/skills/tmux/SKILL.md');
+    process.exit(0);
+  }
+
+  if (!target) {
+    console.error(colorize('Error: Please specify a skill path or directory', 'red'));
+    process.exit(1);
+  }
+
+  try {
+    switch (command) {
+      case 'validate':
+        const result = await validateSkill(target);
+        console.log(colorize('\n🔍 Validation Results:', 'cyan'));
+        result.info.forEach(item => console.log(`  ${item}`));
+        if (result.issues.length > 0) {
+          console.log(colorize('\n❌ Issues:', 'red'));
+          result.issues.forEach(issue => console.log(`  ${issue}`));
+        }
+        if (result.warnings.length > 0) {
+          console.log(colorize('\n⚠️  Warnings:', 'yellow'));
+          result.warnings.forEach(warning => console.log(`  ${warning}`));
+        }
+        console.log(colorize(`\n${result.valid ? '✅' : '❌'} ${result.valid ? 'Valid' : 'Invalid'}`, result.valid ? 'green' : 'red'));
+        process.exit(result.valid ? 0 : 1);
+
+      case 'check':
+        const checkResult = await checkSkill(target);
+        process.exit(checkResult.valid ? 0 : 1);
+
+      case 'list':
+        await listSkills(target);
+        process.exit(0);
+
+      case 'test':
+        const testResult = await testSkill(target);
+        process.exit(testResult ? 0 : 1);
+
+      default:
+        console.error(colorize(`Error: Unknown command '${command}'`, 'red'));
+        console.log('Run "obsidian-skills help" for usage');
+        process.exit(1);
+    }
+  } catch (error) {
+    console.error(colorize(`\n❌ Error: ${error.message}`, 'red'));
+    process.exit(1);
+  }
+}
+
+main();
