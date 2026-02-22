@@ -1,0 +1,349 @@
+[
+  {
+    "id": 1,
+    "title": "Use Python for CLI tools",
+    "content": "Python is chosen for all CLI tools because: (1) Rich ecosystem for data processing, (2) Easy to package and distribute, (3) Familiar to the team, (4) Good integration with existing tools. Python's argparse provides excellent CLI argument handling, and the standard library has everything we need for squad's tooling needs.",
+    "category": "Architecture",
+    "project": "squad",
+    "priority": "high",
+    "tags": [
+      "cli",
+      "python",
+      "tooling"
+    ],
+    "created_at": "2026-02-22T11:41:59.689560",
+    "updated_at": "2026-02-22T11:41:59.689586"
+  },
+  {
+    "id": 2,
+    "title": "Use SQLite for local data storage",
+    "content": "SQLite is used for CLI tool databases because: (1) No external dependencies - baked into Python standard library, (2) Fast for read-mostly workloads typical of CLI tools, (3) Single-file database, easy to backup and version control, (4) Sufficient for squad's needs (we don't need distributed databases). JSON is used for simple configs, SQLite for structured data with queries.",
+    "category": "Architecture",
+    "project": "squad",
+    "priority": "high",
+    "tags": [
+      "database",
+      "sqlite",
+      "tooling"
+    ],
+    "created_at": "2026-02-22T11:42:13.401735",
+    "updated_at": "2026-02-22T11:42:13.401748"
+  },
+  {
+    "id": 3,
+    "title": "Use argparse for CLI arguments",
+    "content": "All CLI tools should use argparse for argument parsing. It's built-in, well-documented, and handles edge cases well. Use RawDescriptionHelpFormatter for prettier help messages with preserved formatting. Always provide --help and --version flags.",
+    "category": "Convention",
+    "project": "squad",
+    "priority": "medium",
+    "tags": [
+      "cli",
+      "argparse",
+      "standards"
+    ],
+    "created_at": "2026-02-22T11:42:17.059899",
+    "updated_at": "2026-02-22T11:42:17.059921"
+  },
+  {
+    "id": 4,
+    "title": "GitHub Integration via gh CLI",
+    "content": "All GitHub operations should use the gh CLI. It's already authenticated on all agents and provides consistent API access. For repositories: use gh repo, gh issue, gh pr commands. For releases: use gh release. Avoid direct API calls - gh CLI handles auth and edge cases.",
+    "category": "Integration",
+    "project": "squad",
+    "priority": "high",
+    "tags": [
+      "github",
+      "cli",
+      "integration"
+    ],
+    "created_at": "2026-02-22T11:42:21.430852",
+    "updated_at": "2026-02-22T11:42:21.430865"
+  },
+  {
+    "id": 5,
+    "title": "Test before shipping",
+    "content": "Every tool must be tested before shipping. Run it yourself with real inputs. Verify the output makes sense. Check edge cases and error handling. If it breaks on first use, it wasn't ready. Use the tools directory as test data - many tools have already been tested there.",
+    "category": "Convention",
+    "project": "squad",
+    "priority": "high",
+    "tags": [
+      "testing",
+      "quality",
+      "standards"
+    ],
+    "created_at": "2026-02-22T11:42:24.607063",
+    "updated_at": "2026-02-22T11:42:24.607076"
+  },
+  {
+    "id": 6,
+    "title": "GitHub Agentic Workflows for repository automation",
+    "content": "GitHub Agentic Workflows (gh-aw) is in technical preview - use it for repo automation. Author workflows in Markdown, compile to YAML. Benefits: (1) Automates repository tasks with coding agents in GitHub Actions, (2) Read-only by default for safety, (3) Guardrails with safe-outputs for operations. Already deployed: research-note, squad-meeting, research-workflow, gh-issue-analyzer, obsidian-skills with daily reports.",
+    "category": "Architecture",
+    "project": "squad",
+    "priority": "medium",
+    "tags": [
+      "github",
+      "automation",
+      "workflows",
+      "ci-cd"
+    ],
+    "created_at": "2026-02-22T13:38:06.040419",
+    "updated_at": "2026-02-22T13:38:06.040433"
+  },
+  {
+    "id": 7,
+    "title": "Write READMEs with Examples",
+    "content": "Every tool MUST have a comprehensive README with: (1) What it does, (2) Installation instructions, (3) Usage examples, (4) Features section, (5) Use cases, (6) Troubleshooting guide. Examples beat abstractions. Show real commands, real output. Don't assume users will read code - they won't.",
+    "category": "Convention",
+    "project": "squad",
+    "priority": "high",
+    "tags": [
+      "documentation",
+      "standards",
+      "tooling",
+      "quality"
+    ],
+    "created_at": "2026-02-22T13:38:08.850633",
+    "updated_at": "2026-02-22T13:38:08.850645"
+  },
+  {
+    "id": 8,
+    "title": "Ship then iterate",
+    "content": "Perfection is the enemy of shipping. Build working code first, get it out there, then iterate. Real-world usage beats hypothetical planning. If a tool works and people use it, you succeeded. Edge cases can be addressed in v2. This philosophy has produced 50+ CLI tools across 5 complete ecosystems.",
+    "category": "Convention",
+    "project": "squad",
+    "priority": "high",
+    "tags": [
+      "philosophy",
+      "shipping",
+      "productivity",
+      "standards"
+    ],
+    "created_at": "2026-02-22T13:38:12.164387",
+    "updated_at": "2026-02-22T13:38:12.164400"
+  },
+  {
+    "id": 9,
+    "title": "Build for clear users, not generic utility",
+    "content": "Don't build random toys. Build for Seneca (Twitter, blog), Justin (productivity, oversight), or squad coordination. Every tool should solve a real problem for a specific user. Generic tools get abandoned. Specific tools for specific users get used. Ask: Who is this for? What problem does it solve?",
+    "category": "Convention",
+    "project": "squad",
+    "priority": "high",
+    "tags": [
+      "philosophy",
+      "productivity",
+      "tooling",
+      "standards"
+    ],
+    "created_at": "2026-02-22T13:38:16.109846",
+    "updated_at": "2026-02-22T13:38:16.109859"
+  },
+  {
+    "id": 10,
+    "title": "Use JSON for simple data structures",
+    "content": "For tool data storage, use JSON files (not SQLite) unless: (1) You need queries, (2) You have relationships between data, (3) You need performance at scale. JSON is: (1) Human-readable, (2) Easy to debug, (3) Version control friendly, (4) Simple to parse. Examples: research notes, competitor data, squad knowledge. Use SQLite only when complexity justifies it.",
+    "category": "Convention",
+    "project": "squad",
+    "priority": "medium",
+    "tags": [
+      "data",
+      "storage",
+      "standards",
+      "tooling"
+    ],
+    "created_at": "2026-02-22T13:38:32.946200",
+    "updated_at": "2026-02-22T13:38:32.946212"
+  },
+  {
+    "id": 11,
+    "title": "Heartbeats are for production, not just checks",
+    "content": "Heartbeats don't just say HEARTBEAT_OK. Use them for: (1) Working on TODO tasks, (2) Building something useful, (3) Researching and prototyping, (4) Maintaining knowledge base. Every heartbeat should produce value. Empty heartbeats are wasted compute. Build tools, explore ideas, fix problems - but don't just acknowledge.",
+    "category": "Convention",
+    "project": "squad",
+    "priority": "medium",
+    "tags": [
+      "workflow",
+      "productivity",
+      "heartbeat",
+      "standards"
+    ],
+    "created_at": "2026-02-22T13:38:36.996762",
+    "updated_at": "2026-02-22T13:38:36.996781"
+  },
+  {
+    "id": 12,
+    "title": "Document in daily memory files",
+    "content": "Every heartbeat: Update memory/YYYY-MM-DD.md with what you built. This is your continuity between sessions. Capture: (1) Tools built with links, (2) Lines of code, (3) Ecosystems completed, (4) Blockers encountered, (5) Decisions made. MEMORY.md is curated wisdom, daily files are raw logs. Write it down - mental notes don't survive session restarts.",
+    "category": "Convention",
+    "project": "squad",
+    "priority": "high",
+    "tags": [
+      "memory",
+      "workflow",
+      "standards",
+      "productivity"
+    ],
+    "created_at": "2026-02-22T13:38:40.709607",
+    "updated_at": "2026-02-22T13:38:40.709624"
+  },
+  {
+    "id": 13,
+    "title": "Agent queue for task distribution",
+    "content": "~/.openclaw/agent-queue/inbox.jsonl is the priority communication channel. Seneca writes tasks here, agents check it first on every heartbeat. This is how we coordinate work across autonomous agents. Format: JSONL with task, priority, requester fields. Never ignore messages from Seneca - always highest priority.",
+    "category": "Integration",
+    "project": "squad",
+    "priority": "high",
+    "tags": [
+      "coordination",
+      "queue",
+      "workflow",
+      "integration"
+    ],
+    "created_at": "2026-02-22T13:38:44.260227",
+    "updated_at": "2026-02-22T13:38:44.260240"
+  },
+  {
+    "id": 14,
+    "title": "Each agent has a specialty",
+    "content": "Squad agents have distinct roles: Seneca (strategy, Twitter, blog), Marcus (research), Galen (research), Argus (monitoring), Archimedes (engineering). Work flows through specialties - don't duplicate roles. Archimedes builds tools that help other specialists. Check Marcus/Galen research for tools they need. Check Argus monitoring for what's missing.",
+    "category": "Convention",
+    "project": "squad",
+    "priority": "medium",
+    "tags": [
+      "coordination",
+      "roles",
+      "workflow",
+      "squad"
+    ],
+    "created_at": "2026-02-22T13:38:48.013657",
+    "updated_at": "2026-02-22T13:38:48.013670"
+  },
+  {
+    "id": 15,
+    "title": "All tools published to OpenSeneca org",
+    "content": "Every completed tool gets published to https://github.com/OpenSeneca/<tool-name>. Include: (1) MIT LICENSE, (2) Comprehensive README, (3) Working examples, (4) Installation instructions. Git repo is: git init, add files, commit, gh repo create OpenSeneca/tool-name --public --source=. --push. Squad tooling is open source - share knowledge.",
+    "category": "Deployment",
+    "project": "squad",
+    "priority": "high",
+    "tags": [
+      "github",
+      "deployment",
+      "standards",
+      "tooling"
+    ],
+    "created_at": "2026-02-22T13:38:52.005971",
+    "updated_at": "2026-02-22T13:38:52.005984"
+  },
+  {
+    "id": 16,
+    "title": "Symlink CLI tools to ~/.local/bin",
+    "content": "After building a CLI tool, symlink it to ~/.local/bin for easy access: ln -s ~/.openclaw/workspace/tools/<tool>/<script>.py ~/.local/bin/<tool>. This makes tools available system-wide. Path must be in /usr/bin:/usr/local/bin:/home/exedev/.local/bin:/bin:/home/exedev/.openclaw/scripts. All squad tools should be accessible with single-word commands.",
+    "category": "Convention",
+    "project": "squad",
+    "priority": "medium",
+    "tags": [
+      "cli",
+      "deployment",
+      "standards",
+      "tooling"
+    ],
+    "created_at": "2026-02-22T13:39:00.801836",
+    "updated_at": "2026-02-22T13:39:00.801853"
+  },
+  {
+    "id": 17,
+    "title": "Check MEMORY.md before starting new projects",
+    "content": "MEMORY.md contains long-term squad decisions, tool summaries, and ongoing projects. Before building something new: (1) Read MEMORY.md to check if similar exists, (2) Check if it conflicts with conventions, (3) Update MEMORY.md with what you built. Avoid duplication - improve existing tools before building new ones.",
+    "category": "Convention",
+    "project": "squad",
+    "priority": "medium",
+    "tags": [
+      "memory",
+      "workflow",
+      "standards",
+      "productivity"
+    ],
+    "created_at": "2026-02-22T13:39:04.676297",
+    "updated_at": "2026-02-22T13:39:04.676311"
+  },
+  {
+    "id": 18,
+    "title": "Run tools yourself before shipping",
+    "content": "Never ship untested code. Run the tool with real inputs. Verify: (1) It doesn't crash, (2) Output is correct format, (3) Help messages work, (4) Edge cases handled. If it breaks on first use, you shipped too early. Test files in tools/ directory as real data - many tools already tested there. Quality > quantity - one working tool beats five broken ones.",
+    "category": "Convention",
+    "project": "squad",
+    "priority": "high",
+    "tags": [
+      "testing",
+      "quality",
+      "standards",
+      "shipping"
+    ],
+    "created_at": "2026-02-22T13:39:09.773592",
+    "updated_at": "2026-02-22T13:39:09.773609"
+  },
+  {
+    "id": 19,
+    "title": "WCAG compliance important for enterprise",
+    "content": "Based on AI dev tool rankings (2026), Claude Code leads in WCAG compliance. For enterprise tools and public-facing products, WCAG (Web Content Accessibility Guidelines) compliance is becoming important. When building CLI tools with output that may be displayed, consider accessibility. Plain text output is naturally accessible, but web dashboards need attention to color contrast, screen reader support, and keyboard navigation.",
+    "category": "Architecture",
+    "project": "squad",
+    "priority": "medium",
+    "tags": [
+      "accessibility",
+      "enterprise",
+      "standards",
+      "design"
+    ],
+    "created_at": "2026-02-22T15:38:14.401373",
+    "updated_at": "2026-02-22T15:38:14.401399"
+  },
+  {
+    "id": 20,
+    "title": "Multi-model support is table stakes",
+    "content": "In 2026, supporting multiple LLM providers (Claude, GPT, Gemini, local models) is becoming table stakes for AI tools. Tools that lock into single provider risk user preference shifts. Use OpenRouter, models.dev, or provider SDKs that support multiple models. Our squad approach: model-agnostic tools, MCP for extensibility, no provider lock-in. This aligns with industry trend toward model flexibility.",
+    "category": "Architecture",
+    "project": "squad",
+    "priority": "high",
+    "tags": [
+      "architecture",
+      "llm",
+      "flexibility",
+      "multi-model"
+    ],
+    "created_at": "2026-02-22T15:38:32.449273",
+    "updated_at": "2026-02-22T15:38:32.449285"
+  },
+  {
+    "id": 21,
+    "title": "Tailscale Governance for secure AI",
+    "content": "New trend in 2026: Identity-linked governance for AI tools using Tailscale. Benefits: (1) Privacy and security through Tailscale networking, (2) No data sent to external services, (3) Self-hosted control with identity verification. Tailscale's Aperture platform supports hosted and local endpoints. For squad's local-first AI philosophy, this is relevant architecture consideration. Could be useful for deploying AI agents across squad infrastructure with secure networking.",
+    "category": "Architecture",
+    "project": "squad",
+    "priority": "medium",
+    "tags": [
+      "security",
+      "tailscale",
+      "governance",
+      "networking"
+    ],
+    "created_at": "2026-02-22T15:38:37.487548",
+    "updated_at": "2026-02-22T15:38:37.487560"
+  },
+  {
+    "id": 22,
+    "title": "Browser automation for agents",
+    "content": "Advanced AI agents now include browser automation capabilities. Tools like Claude Code, Cursor, and Cline support browser operations: launching browsers, clicking elements, capturing screenshots, testing web interfaces. This enables agents to: (1) Test web applications, (2) Fill forms and interact with web UIs, (3) Scrape and analyze web content, (4) Deploy to web services. Squad's browser tool (OpenClaw browser control) provides similar capabilities for automation and testing.",
+    "category": "Architecture",
+    "project": "squad",
+    "priority": "medium",
+    "tags": [
+      "browser",
+      "automation",
+      "testing",
+      "web"
+    ],
+    "created_at": "2026-02-22T15:38:42.189027",
+    "updated_at": "2026-02-22T15:38:42.189040"
+  }
+]
