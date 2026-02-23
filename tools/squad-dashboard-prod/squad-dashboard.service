@@ -1,0 +1,18 @@
+[Unit]
+Description=Squad Dashboard - Production Monitoring
+After=network.target
+
+[Service]
+Type=simple
+User=exedev
+WorkingDirectory=/home/exedev/.openclaw/workspace/tools/squad-dashboard-prod
+Environment=NODE_ENV=production
+Environment=PORT=3000
+ExecStart=/usr/bin/node /home/exedev/.openclaw/workspace/tools/squad-dashboard-prod/server.js
+Restart=on-failure
+RestartSec=10s
+StandardOutput=append:/var/log/squad-dashboard/access.log
+StandardError=append:/var/log/squad-dashboard/error.log
+
+[Install]
+WantedBy=multi-user.target
