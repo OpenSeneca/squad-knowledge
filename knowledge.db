@@ -596,5 +596,24 @@
     ],
     "created_at": "2026-02-23T09:42:14.901808",
     "updated_at": "2026-02-23T09:42:14.901835"
+  },
+  {
+    "id": 37,
+    "title": "squad-mcp-server - Expose squad tools via MCP",
+    "content": "squad-mcp-server built - Expose squad CLI tools via Model Context Protocol. MCP protocol standard for connecting AI to external systems. Features: 10 squad tools exposed (research-digest, squad-eval, squad-overview, squad-meeting, paper-summarizer, blog-assistant, competitor-tracker, gh-release-monitor, squad-knowledge, squad-output-stats). 4 MCP tools: squad-tools-list (list tools), squad-tool-execute (run tools), squad-knowledge-search (search DB), squad-overview-full (squad status). 2 MCP resources: tools-list, knowledge summary. 2 MCP prompts: squad-summary (activity/status), squad-coordination (coordination plan). Benefits: Direct AI access to squad tools, consistent context, better collaboration, standardized protocol. Validation: MCP standardization confirmed (Claude Cowork research), AI assistant integration (Claude, Codex, Gemini CLI), squad tools accessible via MCP, knowledge accessible to AI. Files: mcp_server.py (280 lines), requirements.txt, README.md, setup.sh. User: Squad (marcus, galen, archimedes, argus, Seneca). Status: Built and ready for deployment. Location: /home/exedev/.openclaw/workspace/tools/squad-mcp-server/.",
+    "category": "Architecture",
+    "project": "squad",
+    "priority": "high",
+    "tags": [
+      "mcp",
+      "squad-tools",
+      "ai-integration",
+      "fastmcp",
+      "claude",
+      "codex",
+      "2026"
+    ],
+    "created_at": "2026-02-23T10:13:48.338379",
+    "updated_at": "2026-02-23T10:13:48.338407"
   }
 ]
