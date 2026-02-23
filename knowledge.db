@@ -558,5 +558,43 @@
     ],
     "created_at": "2026-02-23T09:07:46.651404",
     "updated_at": "2026-02-23T09:07:46.651445"
+  },
+  {
+    "id": 35,
+    "title": "CrewAI - Leading multi-agent platform",
+    "content": "CrewAI - Leading multi-agent platform with real-time agent tracing. Visual editor + AI copilot for building crews without writing code. 450K+ workflows per month, 60% of Fortune 500 using CrewAI. Loved by AI builders, trusted by AI leaders. Features: Visual editor and AI copilot, intuitive and powerful APIs, automated and human-in-the-loop agent training, integration with Gmail/Teams/Notion/HubSpot/Salesforce/Slack, workflow tracing from interpretation to validation. Enterprise AMP: Agent Management Platform (build, test, deploy, scale, observe, optimize). Management and scaling: Centralized across teams/departments, monitoring, security, automatic serverless scaling, LLM and tool configuration, role-based access control. CrewAI OSS: Open-source orchestration framework with high-level abstractions, low-level APIs. Customer results: DocuSign 75% faster first contact, Gelato improved lead quality, General Assembly streamlined curriculum, IBM WatsonX.AI integration, Piracanjuba improved customer support, PwC boosted code generation accuracy 10% to 70%. Validation of squad approach: Squad has specialized agents, dashboard for monitoring, coordination tools, knowledge management. Gaps: Real-time workflow tracing, visual agent builder, enterprise-grade management and scaling, training and guardrails. Opportunity: Real-time tracing for squad agents, visual builder for squad workflows, enterprise management platform.",
+    "category": "Architecture",
+    "project": "squad",
+    "priority": "high",
+    "tags": [
+      "crewai",
+      "agent-orchestration",
+      "workflow-tracing",
+      "multi-agent",
+      "enterprise",
+      "2026"
+    ],
+    "created_at": "2026-02-23T09:10:12.507058",
+    "updated_at": "2026-02-23T09:10:12.507086"
+  },
+  {
+    "id": 36,
+    "title": "Claude Cowork AI Tool - Anthropic's vibe working platform",
+    "content": "Claude Cowork AI Tool launched January 2026 - Autonomous AI agent for real work across computer environment. Transition from helpful assistant to full collaborator (Scott White, Anthropic Head of Enterprise Product). Human-AI collaboration not workforce replacement. AI augments 30-50% daily work, 60%+ usage from non-technical roles, 15-20% higher job satisfaction, 20-30% time savings. Features: Autonomous task execution (multi-step), local system integration, real-world workflow automation. Pricing: Free (/bin/bash), Pro (7-20/month), Max (00/month), Team Standard (5-30/month), Team Premium (50/month), Enterprise (custom). 11 role-specific plugins: Sales (pipeline management), Finance (analysis/reporting), Marketing (campaign planning), Data Analysis (queries/viz), Customer Support (ticket triage), Project Management (task coordination), Legal (contract review, compliance), Biology Research (literature review). Legal Plugin (Feb 2026): Contract review clause-by-clause, NDA triage, compliance workflows, redline generation. MCP (Model Context Protocol): Standard for connecting AI to external systems, direct knowledge access, consistent outputs, better audit trails. Open governance via Agentic AI Foundation. Enterprise integrations: Slack (draft messages, summarize), Figma (diagrams, mockups), Canva (visual content), Asana (timelines), Monday.com (tasks), Box (files), Hex (data analysis), Clay (data enrichment), Amplitude (analytics). Security: Permission-based access, least-privilege model, sandboxed sessions. Human-in-the-loop: Consent-based execution, real-time monitoring, intervention capability. Microsoft partnership: 0B Azure compute commitment, 00M annual spending. Market: 61% YoY growth (18% to 29%), 2025 revenue .7B, 2026 target 5B, 0B round at 50B valuation. 80% enterprise customers. 'Vibe working' era beyond 'vibe coding'. Squad validation: Specialized agents, coordination tools, knowledge management all align. Gaps: Autonomous task execution, role-specific plugins, real-time tracing. Opportunity: Squad agent plugins, workflow automation, MCP integrations, human-in-the-loop controls, real-time tracing.",
+    "category": "Architecture",
+    "project": "squad",
+    "priority": "high",
+    "tags": [
+      "claude-cowork",
+      "anthropic",
+      "ai-collaboration",
+      "role-specific-plugins",
+      "mcp",
+      "vibe-working",
+      "enterprise",
+      "2026"
+    ],
+    "created_at": "2026-02-23T09:42:14.901808",
+    "updated_at": "2026-02-23T09:42:14.901835"
   }
 ]
