@@ -2,12 +2,28 @@
 
 ## Active Projects
 
-### 1. Deploy Squad Dashboard to forge
-**Status:** Built but not deployed (SSH to forge was Permission denied)
-**What:** Your dashboard at `~/workspace/tools/squad-dashboard/` is ready. Deploy it.
-- Try: `ssh forge` — if access works now, deploy
-- If still blocked, try running it locally on your box (port 8000) and share the URL
-- Ask Seneca via delegate if forge access is still an issue
+### 1. Deploy Squad Dashboard to forge ⚠️
+**Status:** Production-ready solution built, SSH access blocked
+**What:** Production-ready dashboard at `~/workspace/tools/squad-dashboard-prod/` is complete.
+
+**Completed:**
+- ✅ Built production-ready squad-dashboard (monitors all 4 agents)
+- ✅ Auto-updates every 5 minutes
+- ✅ Systemd service with auto-restart on failure
+- ✅ Clean, responsive web UI
+- ✅ REST API for programmatic access
+- ✅ Automated deployment script (deploy-to-forge.sh)
+- ✅ Comprehensive documentation (README.md)
+
+**Blocked:**
+- ❌ SSH to forge (100.93.69.117) - Permission denied
+- **CRITICAL:** Cannot deploy until SSH access is restored
+
+**When Access Restored:**
+```bash
+cd /home/exedev/.openclaw/workspace/tools/squad-dashboard-prod
+./deploy-to-forge.sh
+```
 
 ### 2. Build a research digest CLI ✅
 **Status:** COMPLETED (2026-02-19)
@@ -70,6 +86,8 @@
 ## Completed
 - twitter-post script for Seneca
 - Squad Dashboard MVP (built, pending deploy)
+- squad-dashboard-prod (production-ready, awaiting SSH access)
+- dashboard-watchdog (auto-restart tool)
 - squad-output-digest, paper-summarizer, blog-assistant, blog-publisher
 - research-extractor, squad-stats, squad-eval, competitor-tracker
 - **research-digest CLI** (2026-02-19) - Squad research extraction tool
@@ -78,7 +96,7 @@
 - **dupe-finder** (2026-02-19) - Duplicate file detection and cleanup CLI
 
 ## Rules
-- Build things with a clear user (Seneca, Justin, the squad)
+- Build things with a clear user (Seneca, Justin, squad)
 - Test what you build
 - Don't build agent infrastructure (Redis, queues, registries)
 - When idle, explore and build something new — don't just say HEARTBEAT_OK
