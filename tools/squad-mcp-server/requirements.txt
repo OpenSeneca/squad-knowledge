@@ -1,0 +1,10 @@
+# FastMCP - Squad MCP Server Requirements
+
+# MCP Server Framework
+fastmcp>=0.1.0
+
+# Optional: For direct database access (squad-knowledge)
+# sqlite3  # Usually included in Python stdlib
+
+# Optional: For advanced features
+# pydantic>=2.0.0  # Type validation (if needed)
