@@ -615,5 +615,26 @@
     ],
     "created_at": "2026-02-23T10:13:48.338379",
     "updated_at": "2026-02-23T10:13:48.338407"
+  },
+  {
+    "id": 38,
+    "title": "AI codebase documentation tools in 2026",
+    "content": "AI codebase documentation tools mainstream in 2026: ChatGPT (Plus) - Natural language explanations, contextual memory, $20/month Plus. GitHub Copilot - Real-time in-line doc suggestions, integrated into IDE, free unlimited repos. Mintlify - Auto-generate clean, easy-to-read project documentation, full project docs automatically. Qodo - Keep docs updated in one place, upload code, docs built into project, updated easily. Sourcery - Suggest clearer Python code, add helpful docstrings, improve code quality. AskCodi - Read code, create comments and explanations fast, quick doc generation for any code. Key trends: Real-time documentation suggestions (GitHub Copilot), natural language explanations (ChatGPT), full project automation (Mintlify), centralized management (Qodo), language-specific improvements (Sourcery), fast generation (AskCodi). Squad validation: squad-knowledge for conventions, squad-meeting for coordination, squad-daily-merge for briefings. Gaps: Automatic codebase documentation generation, real-time docstring suggestions, full project documentation automation. Opportunity: Apply AI documentation tools to squad codebase, squad-knowledge + AI codebase docs = comprehensive documentation, real-time docstring suggestions for squad tools.",
+    "category": "Trends",
+    "project": "squad",
+    "priority": "medium",
+    "tags": [
+      "documentation",
+      "ai-tools",
+      "chatgpt",
+      "github-copilot",
+      "mintlify",
+      "qodo",
+      "sourcery",
+      "askcodi",
+      "2026"
+    ],
+    "created_at": "2026-02-23T10:42:51.971351",
+    "updated_at": "2026-02-23T10:42:51.971379"
   }
 ]
